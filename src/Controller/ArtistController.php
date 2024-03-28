@@ -34,10 +34,10 @@ class ArtistController extends AbstractController
     #[Route('/artists', name: 'artist_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        $data = $request->request->all();
 
         $artist = new Artist();
-        $artist->setName($data['name']); 
+        $artist->setUser_idUser($data['User_idUser']);
         $artist->setLabel($data['label']);
         $artist->setDescription($data['description']);
         $artist->setFullname($data['fullname']);
