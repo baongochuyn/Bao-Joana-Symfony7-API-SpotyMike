@@ -33,7 +33,8 @@ class SongController extends AbstractController
     #[Route('/song/create', name: 'app_create_song',methods:['POST'])]
     public function createUser(Request $request): JsonResponse
     {
-        $requestData = json_decode($request->getContent(),true);
+        //$requestData = json_decode($request->getContent(),true);
+        $requestData = $request->request->all();
         $song = new Song();
         if(isset($requestData['idSong'])){
             $song->setIdSong($requestData['idSong']);
@@ -79,7 +80,8 @@ class SongController extends AbstractController
     #[Route('/song/update/{id}', name: 'app_update_song',methods:['POST','PUT'])]
     public function updateUser(Request $request, int $id): JsonResponse
     {
-        $requestData = json_decode($request->getContent(),true);
+        //$requestData = json_decode($request->getContent(),true);
+        $requestData = $request->request->all();
         $song =$this->repository->findOneBy(['id'=> $id]);
 
         if(!$song){

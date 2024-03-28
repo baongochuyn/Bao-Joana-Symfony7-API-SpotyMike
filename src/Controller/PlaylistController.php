@@ -34,7 +34,8 @@ class PlaylistController extends AbstractController
     #[Route('/playlist/create', name: 'app_create_playlist',methods:['POST'])]
     public function createPlaylist(Request $request): JsonResponse
     {
-        $requestData = json_decode($request->getContent(),true);
+        //$requestData = json_decode($request->getContent(),true);
+        $requestData = $request->request->all();
         $playlist = new Playlist();
         if(isset($requestData['idPlaylist'])){
             $playlist->setIdPlaylist($requestData['idPlaylist']);
@@ -83,7 +84,8 @@ class PlaylistController extends AbstractController
     #[Route('/playlist/update/{id}', name: 'app_update_playlist',methods:['POST','PUT'])]
     public function updatePlaylist(Request $request, int $id): JsonResponse
     {
-        $requestData = json_decode($request->getContent(),true);
+        //$requestData = json_decode($request->getContent(),true);
+        $requestData = $request->request->all();
         $playlist = $this->repository->findOneBy(['id'=> $id]);
 
         if(!$playlist){
