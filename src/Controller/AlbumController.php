@@ -31,79 +31,90 @@ class AlbumController extends AbstractController
         ]);
     }
 
-    // #[Route('/album/create', name: 'album_create', methods: ['POST'])]
-    // public function create(Request $request): JsonResponse
-    // {
-    //     $data = json_decode($request->getContent(), true);
+    #[Route('/album/create', name: 'album_create', methods: ['POST'])]
+    public function create(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
 
-    //     $album = new Album();
-    //     $album->setTitle($data['title']);
+        $album = new Album();
+        $album->setTitle($data['title']);
+        $album->setDescription($data['description']);
+        $album->setIdArtist($data['id_artist']);
+        $album->setCateg($data['categ']);
+        $album->setCover($data['cover']);
+        $album->setYear($data['year']);
      
-    //     $this->entityManager->persist($album);
-    //     $this->entityManager->flush();
+        $this->entityManager->persist($album);
+        $this->entityManager->flush();
 
-    //     return $this->json([
-    //         'message' => 'Album created successfully!',
-    //         'path' => 'src/Controller/AlbumController.php',
-    //     ]);
-    // }
+        return $this->json([
+            'message' => 'Album created successfully!',
+            'path' => 'src/Controller/AlbumController.php',
+        ]);
+    }
 
-    // #[Route('/albums/{id}', name: 'album_show', methods: ['GET'])]
-    // public function show($id): JsonResponse
-    // {
-    //     $album = $this->albumRepository->find($id);
+    #[Route('/albums/{id}', name: 'album_show', methods: ['GET'])]
+    public function show($id): JsonResponse
+    {
+        $album = $this->albumRepository->find($id);
 
-    //     if (!$album) {
-    //         return $this->json([
-    //             'error' => 'Album not found!',
-    //         ], 404);
-    //     }
+        if (!$album) {
+            return $this->json([
+                'error' => 'Album not found!',
+            ], 404);
+        }
 
-    //     return $this->json([
-    //         'album' => $album,
-    //         'path' => 'src/Controller/AlbumController.php',
-    //     ]);
-    // }
+        return $this->json([
+            'album' => $album,
+            'path' => 'src/Controller/AlbumController.php',
+        ]);
+    }
 
-    // #[Route('/albums/{id}', name: 'album_update', methods: ['PUT'])]
-    // public function update($id, Request $request): JsonResponse
-    // {
-    //     $album = $this->albumRepository->find($id);
+    #[Route('/albums/{id}', name: 'album_update', methods: ['PUT'])]
+    public function update($id, Request $request): JsonResponse
+    {
+        $album = $this->albumRepository->find($id);
 
-    //     if (!$album) {
-    //         return $this->json([
-    //             'error' => 'Album not found!',
-    //         ], 404);
-    //     }
+        if (!$album) {
+            return $this->json([
+                'error' => 'Album not found!',
+            ], 404);
+        }
 
-    //     $data = json_decode($request->getContent(), true);
+        $data = json_decode($request->getContent(), true);
 
-    //     $album->setTitle($data['title']);
-    //      $this->entityManager->flush();
+        $album->setTitle($data['title']);
+        $album->setDescription($data['description']);
+        $album->setIdArtist($data['id_artist']);
+        $album->setCateg($data['categ']);
+        $album->setCover($data['cover']);
+        $album->setYear($data['year']);
 
-    //     return $this->json([
-    //         'message' => 'Album updated successfully!',
-    //         'path' => 'src/Controller/AlbumController.php',
-    //     ]);
-    // }
+        $this->entityManager->flush();
 
-    // #[Route('/albums/{id}', name: 'album_delete', methods: ['DELETE'])]
-    // public function delete($id): JsonResponse
-    // {
-    //     $album = $this->albumRepository->find($id);
+        return $this->json([
+            'message' => 'Album updated successfully!',
+            'path' => 'src/Controller/AlbumController.php',
+        ]);
+    }
 
-    //     if (!$album) {
-    //         return $this->json([
-    //             'error' => 'Album not found!',
-    //         ], 404);
-    //     }
+    #[Route('/albums/{id}', name: 'album_delete', methods: ['DELETE'])]
+    public function delete($id): JsonResponse
+    {
+        $album = $this->albumRepository->find($id);
 
-    //     $this->entityManager->remove($album);
-    //     $this->entityManager->flush();
+        if (!$album) {
+            return $this->json([
+                'error' => 'Album not found!',
+            ], 404);
+        }
 
-    //     return $this->json([
-    //         'message' => 'Album deleted successfully!',
-    //         'path' => 'src/Controller/AlbumController.php',
-    //     ]);
-    // }
+        $this->entityManager->remove($album);
+        $this->entityManager->flush();
+
+        return $this->json([
+            'message' => 'Album deleted successfully!',
+            'path' => 'src/Controller/AlbumController.php',
+        ]);
+    }
 }
