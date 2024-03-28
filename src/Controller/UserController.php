@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,9 +25,19 @@ class UserController extends AbstractController
     #[Route('/user', name: 'app_user',methods:['GET'])]
     public function index(): JsonResponse
     {
-        $user = $this->repository->findAll();
+        $users = $this->repository->findAll();
+        $resultat = [];
+        try{
+            if(count($users)>0){
+                foreach($users as $user){
+                   array_push($resultat,$user->serializer()) ;
+                }
+            }
+        }catch (Exception $e) {
+            echo 'Caught exception: ',  $e->getMessage(), "\n";
+        }
         return $this->json([
-            'user'=>json_encode($user),
+            'user' => $resultat,
             'message' => 'welcome !!! ',
             'path' => 'src/Controller/UserController.php',
         ]);
@@ -43,7 +54,7 @@ class UserController extends AbstractController
             ]);
         }
         return $this->json([
-            'user'=>json_encode($user),
+            'user'=>$user->serializer(),
             'message' => 'welcome !!! ',
             'path' => 'src/Controller/UserController.php',
         ]);
