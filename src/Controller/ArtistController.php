@@ -37,7 +37,10 @@ class ArtistController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         $artist = new Artist();
-        $artist->setName($data['name']); // Utilisation de la méthode setName pour définir le nom de l'artiste
+        $artist->setName($data['name']); 
+        $artist->setLabel($data['label']);
+        $artist->setDescription($data['description']);
+        $artist->setFullname($data['fullname']);
         
         $this->entityManager->persist($artist);
         $this->entityManager->flush();
@@ -78,7 +81,10 @@ class ArtistController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
 
-        $artist->setName($data['name']); // Utilisation de la méthode setName pour définir le nom de l'artiste
+        $artist->setName($data['name']); 
+        $artist->setLabel($data['label']);
+        $artist->setDescription($data['description']);
+        $artist->setFullname($data['fullname']);
         
         $this->entityManager->flush();
 
