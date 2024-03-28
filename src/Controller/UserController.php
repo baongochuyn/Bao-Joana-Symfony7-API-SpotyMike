@@ -52,7 +52,8 @@ class UserController extends AbstractController
     #[Route('/user/create', name: 'app_create_user',methods:['POST'])]
     public function CreateUser(Request $request): JsonResponse
     {
-        $requestData = json_decode($request->getContent(),true);
+        //$requestData = json_decode($request->getContent(),true);
+        $requestData = $request->request->all();
         $user = new User();
         if(isset($requestData['idUser'])){
             $user->setIdUser($requestData['idUser']);
@@ -89,8 +90,8 @@ class UserController extends AbstractController
     #[Route('/user/update/{id}', name: 'app_update_user',methods:['POST'])]
     public function UpdateUser(Request $request, int $id): JsonResponse
     {
-        $requestData = json_decode($request->getContent(), true);
-        
+        //$requestData = json_decode($request->getContent(), true);
+        $requestData = $request->request->all();
         $user = $this->repository->findOneBy(['id'=> $id]);
         if(!$user){
             return $this->json([
@@ -98,33 +99,33 @@ class UserController extends AbstractController
                 'path' => 'src/Controller/UserController.php',
             ]);
         }
-        if($user){
-            if (isset($requestData)) {
-                if(isset($requestData['idUser'])){
-                    $user->setIdUser($requestData['idUser']);
-                }
-                if(isset($requestData['name'])){
-                    $user->setName($requestData['name']);
-                }
-                if(isset($requestData['email'])){
-                    $user->setEmail($requestData['email']);
-                }
-                if(isset($requestData['encrypte'])){
-                    $user->setEncrypte($requestData['encrypte']);
-                }
-                if(isset($requestData['tel'])){
-                    $user->setTel($requestData['tel']);
-                }
-                if(isset($requestData['updateAt'])){
-                    $user->setUpdateAt(new \DateTimeImmutable($requestData['updateAt']));
-                }
-                $this->entityManager->flush();
-                return $this->json([
-                    'user'=>json_encode($user),
-                    'message' => 'updated !!! ',
-                    'path' => 'src/Controller/UserController.php',
-                ]);
-            } 
+        
+        if (isset($requestData)) {
+            if(isset($requestData['idUser'])){
+                $user->setIdUser($requestData['idUser']);
+            }
+            if(isset($requestData['name'])){
+                $user->setName($requestData['name']);
+            }
+            if(isset($requestData['email'])){
+                $user->setEmail($requestData['email']);
+            }
+            if(isset($requestData['encrypte'])){
+                $user->setEncrypte($requestData['encrypte']);
+            }
+            if(isset($requestData['tel'])){
+                $user->setTel($requestData['tel']);
+            }
+            if(isset($requestData['updateAt'])){
+                $user->setUpdateAt(new \DateTimeImmutable($requestData['updateAt']));
+            }
+            $this->entityManager->flush();
+            return $this->json([
+                'user'=>json_encode($user),
+                'message' => 'updated !!! ',
+                'path' => 'src/Controller/UserController.php',
+            ]);
+            
         }
 
         return $this->json([
