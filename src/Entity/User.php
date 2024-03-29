@@ -203,7 +203,7 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
     public function getUserIdentifier(): string{
         return "";
     }
-    
+
     public function serializer(){
         return ([
             "id"=> $this->getId(),
@@ -213,7 +213,7 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
             "email"=>$this->getEmail(),
             "tel"=>$this->getTel(),
             "sexe"=>$this->getSexe(),
-            "birthday"=>$this->getDateBirth()
+            "birthday"=>$this->getDateBirth()->format('d-m-Y')
         ]);
     }
 }

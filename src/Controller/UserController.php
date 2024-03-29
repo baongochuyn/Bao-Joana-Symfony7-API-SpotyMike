@@ -102,7 +102,9 @@ class UserController extends AbstractController
         $this->entityManager->flush();
 
         return $this->json([
-            'request'=> $requestData,
+            'error'=>false,
+            'message'=> "L'utilisateur a été authentifié succès",
+            'user'=> $user,
             'message' => 'created !!! ',
             'path' => 'src/Controller/UserController.php',
         ]);
