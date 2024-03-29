@@ -61,53 +61,77 @@ class UserController extends AbstractController
         ]);
     }
 
-    #[Route('/user', name: 'app_create_user',methods:['POST'])]
+    #[Route('/register', name: 'app_create_user',methods:['POST'])]
     public function CreateUser(Request $request,UserPasswordHasherInterface $passwordHash): JsonResponse
     {
         $requestData = $request->request->all();
         $user = new User();
-        if(isset($requestData['idUser'])){
-            $user->setIdUser($requestData['idUser']);
+        $invalidValue = [];
+
+        if(!isset($requestData['firstname'])
+        && !isset($requestData['lastname'])
+        && !isset($requestData['email'])
+        && !isset($requestData['dateBirth'])
+        && !isset($requestData['password']))
+        {
+            return $this->json([
+                'error'=>true,
+                'message'=> "Une ou plusiers donnees obligatoires sont manquantes",
+            ],400);
         }
-        if(isset($requestData['firstname'])){
-            $user->setFirstname($requestData['firstname']);
+        else
+        {
+            $user->setIdUser("User_".rand(0,999999999999));
+
+            $pattern = "/^[a-zA-Z\-']+$/";
+            preg_match($pattern, $requestData['firstname']) ? $user->setFirstname($requestData['firstname']): array_push($invalidValue,$requestData['firstname']);
+            
+            preg_match($pattern, $requestData['lastname']) ? $user->setLastname($requestData['lastname']) : array_push($invalidValue,$requestData['lastname']);
+            
+            filter_var($requestData['email'], FILTER_VALIDATE_EMAIL) ? $user->setEmail($requestData['email']) : array_push($invalidValue,$requestData['email']);
+            
+            //check birthday
+            $diff = date_diff(date_create($requestData['dateBirth']), date_create(date("Y-m-d")));
+            if($diff->format('%y') > 12){
+                $user->setDateBirth(new \DateTimeImmutable($requestData['dateBirth']));
+            }else{
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "L'age de l'utilisateur ne permet pas (12 ans)",
+                ],406);
+            }
+            $hash = $passwordHash->hashPassword($user, $requestData['password']);
+            $user->setPassword($hash);
+
+            $user->setCreateAt(new \DateTimeImmutable());
+            $user->setUpdateAt(new \DateTimeImmutable());
         }
-        if(isset($requestData['lastname'])){
-            $user->setLastname($requestData['lastname']);
-        }
-        if(isset($requestData['email'])){
-            $user->setEmail($requestData['email']);
-        }
+        
         if(isset($requestData['sexe'])){
-            $user->setSexe($requestData['sexe']);
+            $requestData['sexe'] == "F" || $requestData['sexe'] == "M" ?
+            $user->setSexe($requestData['sexe']) :
+            array_push($invalidValue,$requestData['sexe']);
         }
         if(isset($requestData['tel'])){
-            $user->setTel($requestData['tel']);
+            preg_match("/^[0-9]{3} [0-9]{4} [0-9]{4}$/", $requestData['tel']) ?
+            $user->setTel($requestData['tel']) :
+            array_push($invalidValue,$requestData['tel']);
         }
-        if(isset($requestData['dateBirth'])){
-            $user->setDateBirth(new \DateTimeImmutable($requestData['dateBirth']));
+       
+        if(count($invalidValue) > 0){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Une ou plusieurs donnees sont erronees",
+                'data'=>$invalidValue
+            ],409);
         }
-        if(isset($requestData['createAt'])){
-            $user->setCreateAt(new \DateTimeImmutable($requestData['createAt']));
-        }
-        if(isset($requestData['updateAt'])){
-            $user->setUpdateAt(new \DateTimeImmutable($requestData['updateAt']));
-        }
-        if(isset($requestData['encrypte'])){
-            $hash = $passwordHash->hashPassword($user, $requestData['encrypte']);
-            $user->setPassword($hash);
-        }
-
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
         return $this->json([
             'error'=>false,
-            'message'=> "L'utilisateur a été authentifié succès",
-            'user'=> $user,
-            'message' => 'created !!! ',
-            'path' => 'src/Controller/UserController.php',
-        ]);
+            'message'=> "Votre inscription a bien ete prise en compte",
+        ],201);
     }
 
     #[Route('/user/update/{id}', name: 'app_update_user',methods:['POST'])]
@@ -122,7 +146,7 @@ class UserController extends AbstractController
                 'path' => 'src/Controller/UserController.php',
             ]);
         }
-        
+
         if (isset($requestData)) {
             if(isset($requestData['idUser'])){
                 $user->setIdUser($requestData['idUser']);
@@ -148,7 +172,7 @@ class UserController extends AbstractController
                 'message' => 'updated !!! ',
                 'path' => 'src/Controller/UserController.php',
             ]);
-            
+
         }
 
         return $this->json([
@@ -179,5 +203,5 @@ class UserController extends AbstractController
             'path' => 'src/Controller/UserController.php',
         ]);
     }
-    
+
 }
