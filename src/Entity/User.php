@@ -19,13 +19,22 @@ class User
     private ?string $idUser = null;
 
     #[ORM\Column(length: 55)]
-    private ?string $name = null;
+    private ?string $firstname = null;
+
+    #[ORM\Column(length: 55)]
+    private ?string $lastname = null;
 
     #[ORM\Column(length: 80)]
     private ?string $email = null;
 
+    #[ORM\Column(length: 1)]
+    private ?string $sexe = null;
+
     #[ORM\Column(length: 90)]
     private ?string $encrypte = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface$dateBirth = null;
 
     #[ORM\Column(length: 15, nullable: true)]
     private ?string $tel = null;
@@ -56,14 +65,26 @@ class User
         return $this;
     }
 
-    public function getName(): ?string
+    public function getFirstname(): ?string
     {
-        return $this->name;
+        return $this->firstname;
     }
 
-    public function setName(string $name): static
+    public function setFirstname(string $firstname): static
     {
-        $this->name = $name;
+        $this->firstname = $firstname;
+
+        return $this;
+    }
+
+    public function getLastname(): ?string
+    {
+        return $this->lastname;
+    }
+
+    public function setLastname(string $lastname): static
+    {
+        $this->lastname = $lastname;
 
         return $this;
     }
@@ -77,6 +98,17 @@ class User
     {
         $this->email = $email;
 
+        return $this;
+    }
+    
+    public function getSexe(): ?string
+    {
+        return $this->sexe;
+    }
+
+    public function setSexe(string $sexe): static
+    {
+        $this->sexe = $sexe;
         return $this;
     }
 
@@ -103,6 +135,19 @@ class User
 
         return $this;
     }
+
+    public function getDateBirth(): ?\DateTimeInterface
+    {
+        return $this->dateBirth;
+    }
+
+    public function setDateBirth(?\DateTimeInterface $dateBirth): static
+    {
+        $this->dateBirth = $dateBirth;
+
+        return $this;
+    }
+
 
     public function getCreateAt(): ?\DateTimeImmutable
     {
@@ -149,9 +194,12 @@ class User
         return ([
             "id"=> $this->getId(),
             "idUser"=> $this->getIdUser(),
-            "name"=>$this->getName(),
+            "firstname"=>$this->getFirstname(),
+            "lastname"=>$this->getLastname(),
             "email"=>$this->getEmail(),
-            "tel"=>$this->getTel()
+            "tel"=>$this->getTel(),
+            "sexe"=>$this->getSexe(),
+            "birthday"=>$this->getDateBirth()
         ]);
     }
 }
