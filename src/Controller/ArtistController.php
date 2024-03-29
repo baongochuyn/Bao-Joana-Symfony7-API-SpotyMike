@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Artist;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,6 +19,8 @@ class ArtistController extends AbstractController
     {
         $this->entityManager = $entityManager;
         $this->artistRepository = $entityManager->getRepository(Artist::class);
+        $this->userRepository = $entityManager->getRepository(User::class);
+
     }
 
     #[Route('/artists', name: 'artists_index', methods: ['GET'])]
@@ -35,9 +38,10 @@ class ArtistController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = $request->request->all();
+        $user = $this->userRepository->findOneBy(['id'=>$data['idUser']]);
 
         $artist = new Artist();
-        $artist->setUser_idUser($data['User_idUser']);
+        $artist->setUserIdUser($user);
         $artist->setLabel($data['label']);
         $artist->setDescription($data['description']);
         $artist->setFullname($data['fullname']);
@@ -71,7 +75,9 @@ class ArtistController extends AbstractController
     #[Route('/artists/{id}', name: 'artist_update', methods: ['PUT'])]
     public function update($id, Request $request): JsonResponse
     {
-        $artist = $this->artistRepository->find($id);
+        $artist = $this->artistRepository->findOneBy(['id'=> $id]);
+        $user = $this->userRepository->findOneBy(['id'=>$data['idUser']]);
+
 
         if (!$artist) {
             return $this->json([
@@ -79,20 +85,38 @@ class ArtistController extends AbstractController
             ], 404);
         }
 
-        $data = json_decode($request->getContent(), true);
+    
+    if(isset($requestData['User'])){
+        $user->setUserIdUser($requestUser[$user]);
+    }
+    if(isset($requestData['label'])){
+        $artist->setLabel($requestData['label']);
+    }
+    if(isset($requestData['description'])){
+        $artist->setDescription($requestData['description']);
+    }
+    if(isset($requestData['fullname'])){
+        $artist->setFullname($requestData['fullname']);
+   
+    $this->entityManager->flush();
 
-        $artist->setName($data['name']); 
-        $artist->setLabel($data['label']);
-        $artist->setDescription($data['description']);
-        $artist->setFullname($data['fullname']);
+    // return $this->json([
+
+    //     $requestData = $request->request->all();
+
+    //     $artist->setName($data['name']); 
+    //     $artist->setLabel($data['label']);
+    //     $artist->setDescription($data['description']);
+    //     $artist->setFullname($data['fullname']);
         
-        $this->entityManager->flush();
+    //     $this->entityManager->flush();
 
         return $this->json([
             'message' => 'Artist updated successfully!',
             'path' => 'src/Controller/ArtistController.php',
         ]);
-    }
+    }}
+
 
     #[Route('/artists/{id}', name: 'artist_delete', methods: ['DELETE'])]
     public function delete($id): JsonResponse
