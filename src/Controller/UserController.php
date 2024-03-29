@@ -9,6 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 class UserController extends AbstractController
@@ -60,32 +61,41 @@ class UserController extends AbstractController
         ]);
     }
 
-    #[Route('/user/create', name: 'app_create_user',methods:['POST'])]
-    public function CreateUser(Request $request): JsonResponse
+    #[Route('/user', name: 'app_create_user',methods:['POST'])]
+    public function CreateUser(Request $request,UserPasswordHasherInterface $passwordHash): JsonResponse
     {
-        //$requestData = json_decode($request->getContent(),true);
         $requestData = $request->request->all();
         $user = new User();
         if(isset($requestData['idUser'])){
             $user->setIdUser($requestData['idUser']);
         }
-        if(isset($requestData['name'])){
-            $user->setName($requestData['name']);
+        if(isset($requestData['firstname'])){
+            $user->setFirstname($requestData['firstname']);
+        }
+        if(isset($requestData['lastname'])){
+            $user->setLastname($requestData['lastname']);
         }
         if(isset($requestData['email'])){
             $user->setEmail($requestData['email']);
         }
-        if(isset($requestData['encrypte'])){
-            $user->setEncrypte($requestData['encrypte']);
+        if(isset($requestData['sexe'])){
+            $user->setSexe($requestData['sexe']);
         }
         if(isset($requestData['tel'])){
             $user->setTel($requestData['tel']);
+        }
+        if(isset($requestData['dateBirth'])){
+            $user->setDateBirth(new \DateTimeImmutable($requestData['dateBirth']));
         }
         if(isset($requestData['createAt'])){
             $user->setCreateAt(new \DateTimeImmutable($requestData['createAt']));
         }
         if(isset($requestData['updateAt'])){
             $user->setUpdateAt(new \DateTimeImmutable($requestData['updateAt']));
+        }
+        if(isset($requestData['encrypte'])){
+            $hash = $passwordHash->hashPassword($user, $requestData['encrypte']);
+            $user->setPassword($hash);
         }
 
         $this->entityManager->persist($user);
