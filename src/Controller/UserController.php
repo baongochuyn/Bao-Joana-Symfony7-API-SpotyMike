@@ -137,7 +137,8 @@ class UserController extends AbstractController
 
         return $this->json([
             'error'=>false,
-            'message'=> "Votre inscription a bien ete prise en compte",
+            'message'=> "L'utilisateur a bien été créé avec succes",
+            'user'=>$user->serializer()
         ],201);
     }
 
