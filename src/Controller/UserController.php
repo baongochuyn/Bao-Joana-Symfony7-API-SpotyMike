@@ -68,7 +68,8 @@ class UserController extends AbstractController
         $user = new User();
         $invalidValue = [];
 
-        if(!isset($requestData['firstname'])
+        try{
+            if(!isset($requestData['firstname'])
         && !isset($requestData['lastname'])
         && !isset($requestData['email'])
         && !isset($requestData['dateBirth'])
@@ -127,6 +128,12 @@ class UserController extends AbstractController
         }
         $this->entityManager->persist($user);
         $this->entityManager->flush();
+        }catch (Exception $e) {
+            return $this->json([
+                'error'=>true,
+                'message'=> "Un compte utilisant cette adresse email est deja enregistre"
+            ],409);
+        }
 
         return $this->json([
             'error'=>false,
