@@ -21,24 +21,45 @@ class LoginController extends AbstractController
         $this->repository =  $entityManager->getRepository(User::class);
     }
 
-    #[Route('/login', name: 'app_login', methods: ['GET'])]
-    public function index(): JsonResponse
-    {
-        return $this->json([
-            'message' => 'welcome !!! ',
-            'path' => 'src/Controller/LoginController.php',
-        ]);
-    }
+    // #[Route('/login', name: 'app_login', methods: ['GET'])]
+    // public function index(): JsonResponse
+    // {
+    //     return $this->json([
+    //         'message' => 'welcome !!! ',
+    //         'path' => 'src/Controller/LoginController.php',
+    //     ]);
+    // }
 
-    #[Route('/login', name: 'app_login_post', methods:['POST', 'PUT'])]
+    #[Route('/login', name: 'app_login_post', methods:['POST'])]
     public function login(Request $request): JsonResponse
     {
-        $user = $this->repository->findOneBy(["email"=>"bao@gmail.com"]);
+        $data = $request->request->all();
+
+        if(!isset($data['Email']) || !isset($data['Password'])){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Email/Password manquants",
+            ],400);
+        }else{
+            if(!filter_var($data['Email'], FILTER_VALIDATE_EMAIL)){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Email/Password incorrect",
+                ],400);
+            }
+            $user = $this->repository->findOneBy(["email"=>$data['Email']]);
+            if($user){
+                if(password_verify($data['Password'],$user->getPassword())){
+                    return $this->json([
+                        'user' => $user->serializer()
+                    ]);
+                } 
+            }
+        }
         return $this->json([
-            'user'=>json_encode($user),
-            'data' => $request->getContent(),
-            'message' => 'welcome !!! ',
-            'path' => 'src/Controller/LoginController.php',
-        ]);
+            'error'=>true,
+            'message'=> "Email/Password incorrect",
+        ],400);
+        
     }
 }
