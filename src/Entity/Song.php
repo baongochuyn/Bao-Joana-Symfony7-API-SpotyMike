@@ -178,7 +178,7 @@ class Song
             "title"=>$this->getTitle(),
             "cover"=>$this->getCover(),
             "stream"=>$this->getUrl(),
-            "createAt"=> $this->getCreateAt()->format('Y-m-d\\TH:i:sP')
+            "createAt"=> $this->getCreateAt()->format('Y-m-d H:i:s')
         ]);
     }
 }
