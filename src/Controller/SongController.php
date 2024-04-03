@@ -19,16 +19,16 @@ class SongController extends AbstractController
         $this->repository =  $entityManager->getRepository(Song::class);
     }
 
-    #[Route('/song', name: 'app_get_song', methods:['GET'])]
-    public function index(): JsonResponse
-    {
-        $songs = $this->repository->findAll();
-        return $this->json([
-            'songs'=>json_encode($songs),
-            'message' => 'successful !!! ',
-            'path' => 'src/Controller/SongController.php',
-        ]);
-    }
+    // #[Route('/song', name: 'app_get_song', methods:['GET'])]
+    // public function index(): JsonResponse
+    // {
+    //     $songs = $this->repository->findAll();
+    //     return $this->json([
+    //         'songs'=>json_encode($songs),
+    //         'message' => 'successful !!! ',
+    //         'path' => 'src/Controller/SongController.php',
+    //     ]);
+    // }
 
     #[Route('/song/create', name: 'app_create_song',methods:['POST'])]
     public function createUser(Request $request): JsonResponse
@@ -69,12 +69,30 @@ class SongController extends AbstractController
     #[Route('/song/{id}', name: 'app_song', methods:['GET'])]
     public function getSong(int $id): JsonResponse
     {
+        //check token
+        // return $this->json([
+        //     'error'=>true,
+        //     'message'=>"Votre token n'est pas correct"          
+        // ],401);
+
+        if(!isset($id)){
+            return $this->json([
+                'error'=>true,
+                'message'=>"Une ou plusieurs données obligatoire sont manquantes"          
+            ],400);
+        }
+        
         $song = $this->repository->findOneBy(['id'=>$id]);
+        if($song)
+            return $this->json([
+                'error'=>false,
+                'song'=>$song->serializer()            
+            ]);
+
         return $this->json([
-            'song'=>json_encode($song),
-            'message' => 'successful !!! ',
-            'path' => 'src/Controller/SongController.php',
-        ]);
+            'error'=>true,
+            'message'=>"Une ou plusieurs données obligatoire sont erronees"          
+        ],409);
     }
 
     #[Route('/song/update/{id}', name: 'app_update_song',methods:['POST','PUT'])]
