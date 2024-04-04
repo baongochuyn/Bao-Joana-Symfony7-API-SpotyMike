@@ -130,7 +130,7 @@ class ArtistController extends AbstractController
         }
 
         $this->entityManager->remove($artist);
-        $this->entityManager->flush();
+        $this->entityManager->flush(); 
 
         return $this->json([
             'message' => 'Artist deleted successfully!',
