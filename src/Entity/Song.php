@@ -171,4 +171,14 @@ class Song
 
         return $this;
     }
+
+    public function serializer(){
+        return ([
+            "id"=>$this->getId(),
+            "title"=>$this->getTitle(),
+            "cover"=>$this->getCover(),
+            "stream"=>$this->getUrl(),
+            "createAt"=> $this->getCreateAt()->format('Y-m-d H:i:s')
+        ]);
+    }
 }
