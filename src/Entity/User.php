@@ -39,7 +39,7 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface$dateBirth = null;
 
-    #[ORM\Column(length: 15, nullable: true)]
+    #[ORM\Column(length: 15, nullable: true, unique:true)]
     private ?string $tel = null;
 
     #[ORM\Column]
