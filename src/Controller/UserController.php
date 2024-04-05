@@ -90,9 +90,21 @@ class UserController extends AbstractController
                 $user->setIdUser("User_".rand(0,999999999999));
 
                 $pattern = "/^[a-zA-Z\-']+$/";
-                preg_match($pattern, $requestData['firstname']) ? $user->setFirstname($requestData['firstname']): array_push($invalidValue,$requestData['firstname']);
+                if(!preg_match($pattern, $requestData['firstname'])){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le format du prénom est invalide",
+                    ],400);
+                } 
+                $user->setFirstname($requestData['firstname']);
                 
-                preg_match($pattern, $requestData['lastname']) ? $user->setLastname($requestData['lastname']) : array_push($invalidValue,$requestData['lastname']);
+                if(preg_match($pattern, $requestData['lastname'])){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le format du nom est invalide",
+                    ],400);
+                }
+                $user->setLastname($requestData['lastname']);
                 
                 //check email format
                 if(filter_var($requestData['email'], FILTER_VALIDATE_EMAIL)){
