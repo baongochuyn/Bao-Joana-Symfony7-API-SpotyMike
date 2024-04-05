@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,7 +32,7 @@ class LoginController extends AbstractController
     // }
 
     #[Route('/login', name: 'app_login_post', methods:['POST'])]
-    public function login(Request $request): JsonResponse
+    public function login(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
     {
         $data = $request->request->all();
 
@@ -44,16 +45,32 @@ class LoginController extends AbstractController
             if(!filter_var($data['Email'], FILTER_VALIDATE_EMAIL)){
                 return $this->json([
                     'error'=>true,
-                    'message'=> "Email/Password incorrect",
+                    'message'=> "Le format de l'email est invalide",
+                ],400);
+            }
+            if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $data['Password']) || strlen($data['Password']) < 8){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",
                 ],400);
             }
             $user = $this->repository->findOneBy(["email"=>$data['Email']]);
             if($user){
-                if(password_verify($data['Password'],$user->getPassword())){
-                    return $this->json([
-                        'user' => $user->serializer()
-                    ]);
-                } 
+                if($user->getActive()){
+                    if(password_verify($data['Password'],$user->getPassword())){
+                        return $this->json([
+                            'error'=>false,
+                            'message'=> "L'utilisateur a été authentifié succès ",
+                            'user' => $user->serializer(),
+                            'token'=> $JWTManager->create($user)
+                        ]);
+                    } 
+                }
+            }else{
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Le compte n'est plus actif ou est suspendu.",
+                ],403);
             }
         }
         return $this->json([

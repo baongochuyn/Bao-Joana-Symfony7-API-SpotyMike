@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\UserRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use phpDocumentor\Reflection\Types\Boolean;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -38,7 +39,7 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface$dateBirth = null;
 
-    #[ORM\Column(length: 15, nullable: true)]
+    #[ORM\Column(length: 15, nullable: true, unique:true)]
     private ?string $tel = null;
 
     #[ORM\Column]
@@ -46,6 +47,9 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $updateAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?bool $active = null;
 
     #[ORM\OneToOne(mappedBy: 'User_idUser', cascade: ['persist', 'remove'])]
     private ?Artist $artist = null;
@@ -174,6 +178,18 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function getActive(): ?bool
+    {
+        return $this->active;
+    }
+
+    public function setActive(?bool $active): static
+    {
+        $this->active = $active;
+
+        return $this;
+    }
+
     public function getArtist(): ?Artist
     {
         return $this->artist;
@@ -193,7 +209,7 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getRoles(): array{
 
-        return [];
+        return ["PUBLIC_ACCESS"];
     }
 
     public function eraseCredentials(): void{
@@ -201,7 +217,7 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     public function getUserIdentifier(): string{
-        return "";
+        return $this->getEmail();
     }
 
     public function serializer(){
@@ -211,9 +227,10 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
             "email"=>$this->getEmail(),
             "tel"=>$this->getTel(),
             "sexe"=>$this->getSexe(),
+            "artist"=>$this->getArtist() ?  $this->getArtist()->serializer() : [],
             "birthday"=>$this->getDateBirth()->format('d-m-Y'),
             "createAt"=> $this->getCreateAt()->format('Y-m-d\\TH:i:sP'),
-            "updateAt"=>$this->getUpdateAt()->format('Y-m-d\\TH:i:sP')
+           // "updateAt"=>$this->getUpdateAt()->format('Y-m-d\\TH:i:sP')
         ]);
     }
 }

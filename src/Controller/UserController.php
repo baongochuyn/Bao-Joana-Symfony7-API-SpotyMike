@@ -5,6 +5,10 @@ namespace App\Controller;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use Lexik\Bundle\JWTAuthenticationBundle\LexikJWTAuthenticationBundle;
+use Lexik\Bundle\JWTAuthenticationBundle\Security\Authentication\Token\PreAuthenticationJWTUserToken;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWSProvider\JWSProviderInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,11 +20,13 @@ class UserController extends AbstractController
 {
     private $repository;
     private $entityManager;
+    private $tokenVerifier;
 
-    public function __construct(EntityManagerInterface $entityManager)
+    public function __construct(EntityManagerInterface $entityManager,TokenVerifierService $tokenVerifier)
     {
         $this->entityManager = $entityManager;
         $this->repository =  $entityManager->getRepository(User::class);
+        $this->tokenVerifier = $tokenVerifier;
     }
 
     #[Route('/user', name: 'app_user',methods:['GET'])]
@@ -66,72 +72,127 @@ class UserController extends AbstractController
     {
         $requestData = $request->request->all();
         $user = new User();
-        $invalidValue = [];
-
+      
         try{
             if(!isset($requestData['firstname'])
-        && !isset($requestData['lastname'])
-        && !isset($requestData['email'])
-        && !isset($requestData['dateBirth'])
-        && !isset($requestData['password']))
-        {
-            return $this->json([
-                'error'=>true,
-                'message'=> "Une ou plusiers donnees obligatoires sont manquantes",
-            ],400);
-        }
-        else
-        {
-            $user->setIdUser("User_".rand(0,999999999999));
-
-            $pattern = "/^[a-zA-Z\-']+$/";
-            preg_match($pattern, $requestData['firstname']) ? $user->setFirstname($requestData['firstname']): array_push($invalidValue,$requestData['firstname']);
-            
-            preg_match($pattern, $requestData['lastname']) ? $user->setLastname($requestData['lastname']) : array_push($invalidValue,$requestData['lastname']);
-            
-            filter_var($requestData['email'], FILTER_VALIDATE_EMAIL) ? $user->setEmail($requestData['email']) : array_push($invalidValue,$requestData['email']);
-            
-            //check birthday
-            $diff = date_diff(date_create($requestData['dateBirth']), date_create(date("Y-m-d")));
-            if($diff->format('%y') > 12){
-                $user->setDateBirth(new \DateTimeImmutable($requestData['dateBirth']));
-            }else{
+                && !isset($requestData['lastname'])
+                && !isset($requestData['email'])
+                && !isset($requestData['dateBirth'])
+                && !isset($requestData['password']))
+            {
                 return $this->json([
                     'error'=>true,
-                    'message'=> "L'age de l'utilisateur ne permet pas (12 ans)",
-                ],406);
+                    'message'=> "Des champs obligatoires sont manquantes",
+                ],400);
             }
-            $hash = $passwordHash->hashPassword($user, $requestData['password']);
-            $user->setPassword($hash);
+            else
+            {
+                $user->setIdUser("User_".rand(0,999999999999));
 
-            $user->setCreateAt(new \DateTimeImmutable());
-            $user->setUpdateAt(new \DateTimeImmutable());
-        }
-        
-        if(isset($requestData['sexe'])){
-            $requestData['sexe'] == "F" || $requestData['sexe'] == "M" ?
-            $user->setSexe($requestData['sexe']) :
-            array_push($invalidValue,$requestData['sexe']);
-        }
-        if(isset($requestData['tel'])){
-            preg_match("/^[0-9]{3} [0-9]{4} [0-9]{4}$/", $requestData['tel']) ?
-            $user->setTel($requestData['tel']) :
-            array_push($invalidValue,$requestData['tel']);
-        }
-       
-        if(count($invalidValue) > 0){
-            return $this->json([
-                'error'=>true,
-                'message'=> "Une ou plusieurs donnees sont erronees",
-                'data'=>$invalidValue
-            ],409);
-        }
-        $this->entityManager->persist($user);
-        $this->entityManager->flush();
+                $pattern = "/^[a-zA-Z\-']+$/";
+                if(!preg_match($pattern, $requestData['firstname'])){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le format du prénom est invalide",
+                    ],400);
+                } 
+                $user->setFirstname($requestData['firstname']);
+                
+                if(preg_match($pattern, $requestData['lastname'])){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le format du nom est invalide",
+                    ],400);
+                }
+                $user->setLastname($requestData['lastname']);
+                
+                //check email format
+                if(filter_var($requestData['email'], FILTER_VALIDATE_EMAIL)){
+                    $dataUser = $this->repository->findOneBy(["email"=>$requestData['email']]);
+                    if($dataUser){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Cette email est déjà utilisé par un autre compte",
+                        ],409);
+                    }
+                    $user->setEmail($requestData['email']);
+                }else{
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le format de l'email est invalide",
+                    ],400);
+                }
+                
+                //check birthday
+                $d = \DateTime::createFromFormat('d/m/Y',$requestData['dateBirth']);
+                //dd($d->format('d/m/Y') ==  $requestData['dateBirth']);
+                if($d && ($d->format('d/m/Y') ==  $requestData['dateBirth'])){
+                    $diff = date_diff(date_create($requestData['dateBirth']), date_create(date("Y-m-d")));
+                    if($diff->format('%y') > 12){
+                        $user->setDateBirth(new \DateTimeImmutable($requestData['dateBirth']));
+                    }else{
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "L'age de l'utilisateur ne permet pas (12 ans)",
+                        ],406);
+                    }
+                }else{
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le format de la date de naissance est invalide. Le format attendu est JJ/MM/AAAA.",
+                    ],400);
+                }
+                
+                //check password
+                if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $requestData['password']) || strlen($requestData['password']) < 8){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",
+                    ],400);
+                }
+                $hash = $passwordHash->hashPassword($user, $requestData['password']);
+                $user->setPassword($hash);
+
+                $user->setCreateAt(new \DateTimeImmutable());
+                $user->setUpdateAt(new \DateTimeImmutable());
+            }
+            
+            if(isset($requestData['sexe'])){
+                if($requestData['sexe'] == "0" || $requestData['sexe'] == "1"){
+                    $user->setSexe($requestData['sexe']);
+                }else{
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "La valeur de champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme",
+                    ],400);
+                }
+            }
+            if(isset($requestData['tel'])){
+                if(preg_match("/^[0-9]{3} [0-9]{4} [0-9]{4}$/", $requestData['tel'])){
+                    $dataUser = $this->repository->findOneBy(["tel"=>$requestData['tel']]);
+                    if($dataUser){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Ce numéro de téléphone est déjà utilisé par un autre compte",
+                        ],409);
+                    }
+                    $user->setTel($requestData['tel']);
+                }else{
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le format du numéro de téléphone est invalide.",
+                    ],400);
+                }
+            }
+            $user->setActive(true);
+
+            $this->entityManager->persist($user);
+            $this->entityManager->flush();
         }catch (Exception $e) {
             return $this->json([
                 'error'=>true,
-                'message'=> "Un compte utilisant cette adresse email est deja enregistre"
+                'message'=> $e,
+                //'message'=> "Cette email est déjà par un autre compte"
             ],409);
         }
 
@@ -142,47 +203,80 @@ class UserController extends AbstractController
         ],201);
     }
 
-    #[Route('/user/update/{id}', name: 'app_update_user',methods:['POST'])]
-    public function UpdateUser(Request $request, int $id): JsonResponse
+    #[Route('/user', name: 'app_update_user',methods:['POST'])]
+    public function UpdateUser(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
     {
-        //$requestData = json_decode($request->getContent(), true);
         $requestData = $request->request->all();
-        $user = $this->repository->findOneBy(['id'=> $id]);
+        $dataMiddellware = $this->tokenVerifier->checkToken($request);
+        if(gettype($dataMiddellware) == 'boolean'){
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+        }
+        $user = $dataMiddellware;
+        
         if(!$user){
             return $this->json([
                 'message' => 'user not found !!! ',
-                'path' => 'src/Controller/UserController.php',
+                
             ]);
         }
-
-        if (isset($requestData)) {
-            if(isset($requestData['idUser'])){
-                $user->setIdUser($requestData['idUser']);
+        try{
+            if (isset($requestData)) {
+                if(isset($requestData['firstname'])){
+                    if(preg_match("/^[a-zA-Z\-']+$/", $requestData['firstname'])){
+                        $user->setFirstname($requestData['firstname']);
+                    } 
+                }
+                if(isset($requestData['lastname'])){
+                    if(preg_match("/^[a-zA-Z\-']+$/", $requestData['lastname'])){
+                        $user->setLastname($requestData['lastname']);
+                    } 
+                }
+                if(isset($requestData['tel'])){
+                    if(preg_match("/^[0-9]{3} [0-9]{4} [0-9]{4}$/", $requestData['tel'])){
+                        $dataUser = $this->repository->findOneBy(["tel"=>$requestData['tel']]);
+                        if($dataUser){
+                            return $this->json([
+                                'error'=>true,
+                                'message'=> "Conflit de données. Le numéro de téléphone est déjà utilisé par un autre ",
+                            ],409);
+                        }
+                        $user->setTel($requestData['tel']);
+                    }else{
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Le format du numéro de téléphone est invalide.",
+                        ],400);
+                    }
+                }
+                if(isset($requestData['sexe'])){
+                    if($requestData['sexe'] == "0" || $requestData['sexe'] == "1"){
+                        $user->setSexe($requestData['sexe']);
+                    }else{
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "La valeur de champ sexe est invalide. Les valeurs autorisées sont 0 pour Femme, 1 pour Homme",
+                        ],400);
+                    }
+                }
+                if(isset($requestData['updateAt'])){
+                    $user->setUpdateAt(new \DateTimeImmutable($requestData['updateAt']));
+                }
+                $this->entityManager->flush();
+                return $this->json([
+                    'error'=>false,
+                    'message'=> "Votre inscription a bien été prise en compte",
+                ]);
+    
             }
-            if(isset($requestData['name'])){
-                $user->setName($requestData['name']);
-            }
-            if(isset($requestData['email'])){
-                $user->setEmail($requestData['email']);
-            }
-            if(isset($requestData['encrypte'])){
-                $user->setEncrypte($requestData['encrypte']);
-            }
-            if(isset($requestData['tel'])){
-                $user->setTel($requestData['tel']);
-            }
-            if(isset($requestData['updateAt'])){
-                $user->setUpdateAt(new \DateTimeImmutable($requestData['updateAt']));
-            }
-            $this->entityManager->flush();
+    
+        }catch (Exception $e) {
             return $this->json([
-                'user'=>json_encode($user),
-                'message' => 'updated !!! ',
-                'path' => 'src/Controller/UserController.php',
-            ]);
-
+                'error'=>true,
+                'message'=> $e,
+                'message'=> "Les données fournies sont invalides ou incomplètes"
+            ],409);
         }
-
+        
         return $this->json([
             'message' => 'cannot update !!! ',
             'path' => 'src/Controller/UserController.php',
@@ -211,5 +305,4 @@ class UserController extends AbstractController
             'path' => 'src/Controller/UserController.php',
         ]);
     }
-
 }
