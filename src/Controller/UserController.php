@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Artist;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
@@ -23,6 +24,7 @@ class UserController extends AbstractController
     private $entityManager;
     private $tokenVerifier;
     private $cache;
+    private $artistRepository;
 
     public function __construct(EntityManagerInterface $entityManager,TokenVerifierService $tokenVerifier)
     {
@@ -30,6 +32,7 @@ class UserController extends AbstractController
         $this->repository =  $entityManager->getRepository(User::class);
         $this->tokenVerifier = $tokenVerifier;
         $this->cache = new FilesystemAdapter();
+        $this->artistRepository = $entityManager->getRepository(Artist::class);
     }
 
     #[Route('/user', name: 'app_user',methods:['GET'])]
@@ -293,26 +296,34 @@ class UserController extends AbstractController
         ]);
     }
 
-    #[Route('/user/delete/{id}', name: 'user_delete', methods: ['DELETE'])]
-    public function deleteUser(int $id): JsonResponse
+    #[Route('/account-desactivation', name: 'app_desactive_user', methods: ['DELETE'])]
+    public function desactiveUser(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
     {
-        $user = $this->repository->find($id);
-
-        if (!$user) {
-            if (!$user) {
-                return $this->json([
-                    'message' => 'user not found !!! ',
-                    'path' => 'src/Controller/UserController.php',
-                ]);
-            }
+        $dataMiddellware = $this->tokenVerifier->checkToken($request);
+        if(gettype($dataMiddellware) == 'boolean'){
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
         }
-
-        $this->entityManager->remove($user);
+        $user = $dataMiddellware;
+        
+        if(!$user->getActive()){
+            return $this->json([
+                'error' => true,
+                'message' => 'Le compte est déjà désactivé', 
+            ],409);
+        }
+        $user->setActive(false);
+        
+        //supprimer artiste
+        $artist = $this->artistRepository->findOneBy(['User_idUser'=> $user->getId()]);
+        if($artist){
+            $this->entityManager->remove($artist);
+        }
+        
         $this->entityManager->flush();
-
+        
         return $this->json([
-            'message' => 'deleted !!! ',
-            'path' => 'src/Controller/UserController.php',
+            'success' => true,
+            'message' => 'Votre compte a été déactivé avec succès. Nous sommes désolés de vous voir partir.',
         ]);
     }
 

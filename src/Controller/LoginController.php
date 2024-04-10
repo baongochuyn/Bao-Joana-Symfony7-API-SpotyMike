@@ -39,7 +39,7 @@ class LoginController extends AbstractController
     public function login(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
     {
         $data = $request->request->all();
-
+        //$this->cache->clear();
         if(!isset($data['Email']) || !isset($data['Password'])){
             return $this->json([
                 'error'=>true,
@@ -63,25 +63,25 @@ class LoginController extends AbstractController
                     $loginControl->number = 1;
                     $loginControl->time = time() ;
                     $this->cache->save($this->cache->getItem($userKey)->set($loginControl)->expiresAfter(300));
-                    //dd($this->cache->getItem($userKey)->get());
+                    //dd($this->cache->getItem($userKey));
                 }else{
                     $cacheItem = $this->cache->getItem($userKey);
                     $currentLogin = $cacheItem->get();
-    
-                    //dd($this->cache->getItem($userKey)->get());
-                    if ($currentLogin->number >= 5 && time() - $currentLogin->time < 300) {
-                        $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
-                        //dd($waitTime);
-                        return $this->json([
-                            'error'=>true,
-                            'message'=> "Trop de tentatives de connexion (5max). Veuillez réessayer ulterieurement - $waitTime min d'attente.",
-                        ],429);
-                    }
-                    $currentLogin->number++;
-                    $currentLogin->time = time();
-                    $cacheItem->set($currentLogin);
-                    $cacheItem->expiresAfter(300);
-                    $this->cache->save($cacheItem);
+                    //dd( $this->cache->getItem($userKey));
+
+                        if ($currentLogin->number >= 5 && time() - $currentLogin->time < 300) {
+                            $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
+                            //dd($waitTime);
+                            return $this->json([
+                                'error'=>true,
+                                'message'=> "Trop de tentatives de connexion (5max). Veuillez réessayer ulterieurement - $waitTime min d'attente.",
+                            ],429);
+                        }
+                        $currentLogin->number++;
+                        $currentLogin->time = time();
+                        $cacheItem->set($currentLogin);
+                        $cacheItem->expiresAfter(300);
+                        $this->cache->save($cacheItem);
                 }
                 return $this->json([
                     'error'=>true,
