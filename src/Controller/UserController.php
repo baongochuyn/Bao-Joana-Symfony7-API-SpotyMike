@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Artist;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
@@ -10,6 +11,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Security\Authentication\Token\PreAuthen
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWSProvider\JWSProviderInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,12 +23,16 @@ class UserController extends AbstractController
     private $repository;
     private $entityManager;
     private $tokenVerifier;
+    private $cache;
+    private $artistRepository;
 
     public function __construct(EntityManagerInterface $entityManager,TokenVerifierService $tokenVerifier)
     {
         $this->entityManager = $entityManager;
         $this->repository =  $entityManager->getRepository(User::class);
         $this->tokenVerifier = $tokenVerifier;
+        $this->cache = new FilesystemAdapter();
+        $this->artistRepository = $entityManager->getRepository(Artist::class);
     }
 
     #[Route('/user', name: 'app_user',methods:['GET'])]
@@ -98,7 +104,7 @@ class UserController extends AbstractController
                 } 
                 $user->setFirstname($requestData['firstname']);
                 
-                if(preg_match($pattern, $requestData['lastname'])){
+                if(!preg_match($pattern, $requestData['lastname'])){
                     return $this->json([
                         'error'=>true,
                         'message'=> "Le format du nom est invalide",
@@ -222,14 +228,22 @@ class UserController extends AbstractController
         try{
             if (isset($requestData)) {
                 if(isset($requestData['firstname'])){
-                    if(preg_match("/^[a-zA-Z\-']+$/", $requestData['firstname'])){
-                        $user->setFirstname($requestData['firstname']);
+                    if(!preg_match("/^[a-zA-Z\-']+$/", $requestData['firstname'])){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Le format du prénom est invalide",
+                        ],400);
                     } 
+                    $user->setFirstname($requestData['firstname']);
                 }
                 if(isset($requestData['lastname'])){
-                    if(preg_match("/^[a-zA-Z\-']+$/", $requestData['lastname'])){
-                        $user->setLastname($requestData['lastname']);
+                    if(!preg_match("/^[a-zA-Z\-']+$/", $requestData['lastname'])){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Le format du prénom est invalide",
+                        ],400);
                     } 
+                    $user->setLastname($requestData['lastname']); 
                 }
                 if(isset($requestData['tel'])){
                     if(preg_match("/^[0-9]{3} [0-9]{4} [0-9]{4}$/", $requestData['tel'])){
@@ -258,9 +272,8 @@ class UserController extends AbstractController
                         ],400);
                     }
                 }
-                if(isset($requestData['updateAt'])){
-                    $user->setUpdateAt(new \DateTimeImmutable($requestData['updateAt']));
-                }
+                $user->setUpdateAt(new \DateTimeImmutable());
+
                 $this->entityManager->flush();
                 return $this->json([
                     'error'=>false,
@@ -283,26 +296,141 @@ class UserController extends AbstractController
         ]);
     }
 
-    #[Route('/user/delete/{id}', name: 'user_delete', methods: ['DELETE'])]
-    public function deleteUser(int $id): JsonResponse
+    #[Route('/account-desactivation', name: 'app_desactive_user', methods: ['DELETE'])]
+    public function desactiveUser(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
     {
-        $user = $this->repository->find($id);
+        $dataMiddellware = $this->tokenVerifier->checkToken($request);
+        if(gettype($dataMiddellware) == 'boolean'){
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+        }
+        $user = $dataMiddellware;
+        
+        if(!$user->getActive()){
+            return $this->json([
+                'error' => true,
+                'message' => 'Le compte est déjà désactivé', 
+            ],409);
+        }
+        $user->setActive(false);
+        
+        //supprimer artiste
+        $artist = $this->artistRepository->findOneBy(['User_idUser'=> $user->getId()]);
+        if($artist){
+            $this->entityManager->remove($artist);
+        }
+        
+        $this->entityManager->flush();
+        
+        return $this->json([
+            'success' => true,
+            'message' => 'Votre compte a été déactivé avec succès. Nous sommes désolés de vous voir partir.',
+        ]);
+    }
 
-        if (!$user) {
-            if (!$user) {
-                return $this->json([
-                    'message' => 'user not found !!! ',
-                    'path' => 'src/Controller/UserController.php',
-                ]);
-            }
+    #[Route('/password-lost', name: 'password_lost', methods: ['POST'])]
+    public function passwordLost(Request $request): JsonResponse
+    {
+        $requestData = $request->request->all();
+        if(!isset($requestData['email'])){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Email manquant. Veuillez fournir votre email pour la récuppération du mot de passe",
+            ],400);
+        }
+        if(!filter_var($requestData['email'], FILTER_VALIDATE_EMAIL)){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Le format de l'email est invalide. Veuillez entrer un email valide.",
+            ],400);
+        }
+        $dataUser = $this->repository->findOneBy(["email"=>$requestData['email']]);
+        if(!$dataUser){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Aucun compte n'est associé à cet email. Veuillez vérifier et réessayer.",
+            ],404);
         }
 
-        $this->entityManager->remove($user);
+        $userEmail = str_replace('@', '', $requestData['email']);
+                $userKey  = "password_attempts_$userEmail";
+    
+                if (!$this->cache->hasItem($userKey)) {
+                    // if not exist, create a new key with value 1
+                    $loginControl = new RequestControl();
+                    $loginControl->number = 1;
+                    $loginControl->time = time() ;
+                    $this->cache->save($this->cache->getItem($userKey)->set($loginControl)->expiresAfter(300));
+                    //dd($this->cache->getItem($userKey)->get());
+                }else{
+                    $cacheItem = $this->cache->getItem($userKey);
+                    $currentLogin = $cacheItem->get();
+    
+                    //dd($this->cache->getItem($userKey)->get());
+                    if ($currentLogin->number >= 3 && time() - $currentLogin->time < 300) {
+                        $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
+                        //dd($waitTime);
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Trop de demandes de réinitialisation de mot de passe (3 max). Veuillez attendre avant de réessayer ( dans $waitTime min).",
+                        ],429);
+                    }
+                    $currentLogin->number++;
+                    $currentLogin->time = time();
+                    $cacheItem->set($currentLogin)->expiresAfter(300);
+                    $this->cache->save($cacheItem);
+                }
+        return $this->json([
+            'error'=>false,
+            'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre address email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe."
+        ]);
+    }
+
+    #[Route('/reset-password/{token}', name: 'reset-password', methods: ['GET'])]
+    public function resetPassword(Request $request,string $token,UserPasswordHasherInterface $passwordHash): JsonResponse
+    {
+        $requestData = $request->request->all();
+        dd($requestData);
+        if(!isset($requestData['password'])){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Veuillez fournir un nouveau mot de passe",
+            ],400);
+        }
+        //check password
+        if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $requestData['password']) || strlen($requestData['password']) < 8){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Le nouveau mot de passe ne respecte pas les critère requi.Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",
+            ],400);
+        }
+        //check token
+        $isCheckedToken = true;
+        if($token){
+            $dataMiddellware = $this->tokenVerifier->checkToken($request);
+            if(gettype($dataMiddellware) == 'boolean'){
+                return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            }
+            if(!$dataMiddellware){
+                $isCheckedToken = false;
+            }
+        }else{
+            $isCheckedToken = false;
+        }
+        if(!$isCheckedToken){
+            return $this->json([
+                'error'=>false,
+                'message' => "Token de réinitialisation manquant ou invalide. Veuillez utiliser le lien fourni dans l'email de réinilisation de mot de passe."
+            ],400);
+        }
+        $user = $dataMiddellware;
+        $hash = $passwordHash->hashPassword($user, $requestData['password']);
+        $user->setPassword($hash);
+        $user->setUpdateAt(new \DateTimeImmutable());
         $this->entityManager->flush();
 
         return $this->json([
-            'message' => 'deleted !!! ',
-            'path' => 'src/Controller/UserController.php',
+            'error'=>false,
+            'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre address email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe."
         ]);
     }
 }
