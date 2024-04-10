@@ -27,7 +27,7 @@ class ArtistController extends AbstractController
         $this->tokenVerifier = $tokenVerifier;
     }
 
-    #[Route('/artist', name: 'app_artist', methods:['POST'])]
+    #[Route('/artist', name: 'app_create_artist', methods:['POST'])]
     public function CreateArtist(Request $request,JWTTokenManagerInterface $JWTManager): JsonResponse
     {
         $requestData = $request->request->all();
@@ -56,13 +56,19 @@ class ArtistController extends AbstractController
         
         $artist = new Artist;
         if(isset($requestData['label']) && isset($requestData['fullname'])){
+            if($requestData['fullname'] == "" ){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Le format du fullname est invalide."
+                ],400);
+            }
             if($this->repository->findOneBy(['fullname'=>$requestData['fullname']])){
                 return $this->json([
                     'error'=>true,
                     'message'=> "Ce nom d'artiste a déjà pris. Veuillez en choisir un autre."
                 ],409);
             }
-            if(preg_match('/[^a-zA-Z0-9_-]/', $requestData['label'])){
+            if(preg_match('/[^a-zA-Z0-9_-]/', $requestData['label']) || $requestData['label'] == "" ){
                 return $this->json([
                     'error'=>true,
                     'message'=> "Le format de l'id du label est invalide."
@@ -75,6 +81,7 @@ class ArtistController extends AbstractController
             $artist->setFullname($requestData['fullname']);
             $artist->setDateBegin(new DateTimeImmutable());
             $artist->setUserIdUser($user);
+            $artist->setActive(true);
 
             $this->entityManager->persist($artist);
             $this->entityManager->flush();
@@ -110,7 +117,8 @@ class ArtistController extends AbstractController
         $query = $this->entityManager->createQueryBuilder()
         ->select('a', 'u')
         ->from(Artist::class, 'a')
-        ->leftJoin('a.User_idUser', 'u');
+        ->leftJoin('a.User_idUser', 'u')
+        ->where('a.active =1');
 
         $result = $query->getQuery()->getResult();
         dd($result);
@@ -128,4 +136,92 @@ class ArtistController extends AbstractController
 
         ]);
     }
+
+    // #[Route('/artist', name: 'app_update_artist', methods:['POST'])]
+    // public function UpdateArtist(Request $request,JWTTokenManagerInterface $JWTManager): JsonResponse
+    // {
+    //     $requestData = $request->request->all();
+
+    //     $dataMiddellware = $this->tokenVerifier->checkToken($request);
+    //     if(gettype($dataMiddellware) == 'boolean'){
+    //         return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+    //     }
+    //     $user = $dataMiddellware;
+
+    //     $artist = $this->repository->findOneBy(['User_idUser' => $user->getId()]);
+    //     if(!$artist){
+    //         return $this->json([
+    //             'error'=>true,
+    //             'message'=> "Artiste non trouvé. Veuillez vérifier des informations fournies.",
+    //         ],404);
+    //     }
+    //     $invalide = false;
+    //     if(isset($requestData['label'])){
+    //         if(preg_match('/[^a-zA-Z0-9_-]/', $requestData['label'] || $requestData['label'] == "" )){
+    //             $invalide = true;
+    //         }else{
+    //             $artist->setLabel($requestData['label']);
+    //             $artist->setDateBegin(new DateTimeImmutable());
+    //         }
+    //     }
+    //     if(isset($requestData['fullname'])){
+    //         if($this->repository->findOneBy(['fullname'=>$requestData['fullname']])){
+    //             return $this->json([
+    //                 'error'=>true,
+    //                 'message'=> "Le nom d'artiste est déjà utilisé. Veuillez choisir un autre nom.",
+    //             ],409);
+    //         }
+    //         //check forma ? $invalide = true : false
+    //          if($requestData['fullname'] == ""){
+    //              $invalide = true;
+    //          }
+    //         $artist->setFullname($requestData['fullname']);
+    //     }
+    //     if(isset($requestData['description'])){
+    //          //check forma ? $invalide = true : false
+    //         $artist->setDescription($requestData['description']);
+    //     }
+
+    //     if($invalide){
+    //         return $this->json([
+    //             'error'=>true,
+    //             'message'=> "Les paramettres fournis sont invalides. Veuillez vérifier des données soumises.",
+    //         ],400);
+    //     }
+    //     $this->entityManager->flush();
+    //     return $this->json([
+    //         'success'=>true,
+    //         'message'=> "Les informations de l'artiste ont été mises à jour avec succès."
+    //     ],201);
+    // }
+
+    #[Route('/artist', name: 'app_artist', methods:['DELETE'])]
+    public function DeleteArtist(Request $request,JWTTokenManagerInterface $JWTManager): JsonResponse
+    {
+        $dataMiddellware = $this->tokenVerifier->checkToken($request);
+        if(gettype($dataMiddellware) == 'boolean'){
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+        }
+        $user = $dataMiddellware;
+        $artist = $this->repository->findOneBy(['User_idUser' => $user->getId()]);
+        if(!$artist){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Compte artiste non trouvé. Veuillez vérifier des informations fournies et réessayez.",
+            ],404);
+        }
+        if(!$artist->getActive()){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Le compte artiste est déjà déactivé.",
+            ],410);
+        }
+        $artist->setActive(false);
+        $this->entityManager->flush();
+        return $this->json([
+            'success'=>true,
+            'message'=> "Le compte artiste a été déactivé avec succès."
+        ],201);
+    }
+
 }

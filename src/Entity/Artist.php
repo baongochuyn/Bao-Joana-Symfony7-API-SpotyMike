@@ -35,6 +35,9 @@ class Artist
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface$dateEnd = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?bool $active = null;
+
     #[ORM\ManyToMany(targetEntity: Song::class, mappedBy: 'Artist_idUser')]
     private Collection $songs;
 
@@ -124,6 +127,18 @@ class Artist
         return $this;
     }
 
+    public function getActive(): ?bool
+    {
+        return $this->active;
+    }
+
+    public function setActive(?bool $active): static
+    {
+        $this->active = $active;
+
+        return $this;
+    }
+    
     /**
      * @return Collection<int, Song>
      */
@@ -188,7 +203,7 @@ class Artist
             "label" => $this->getLabel(),
             "description" => $this->getDescription(),
             "songs" => $this->getSongs(),
-            "user"=> $this->getUserIdUser()
+           // "user"=> $this->getUserIdUser()
         ];
     }
 }
