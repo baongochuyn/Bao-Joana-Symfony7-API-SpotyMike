@@ -47,7 +47,7 @@ class TokenVerifierService {
     {
         return [
             'error' => true,
-            'message' => ($nullToken) ?"Authentification requise. Vous devez être connecté pour effectuer cette action." : "Vous n'êtes pas autorisé à accéder aux informations de cet artiste.",
+            'message' => ($nullToken) ?"Authentification requise. Vous devez être connecté pour effectuer cette action." : "Vous n'êtes pas autorisé à accéder aux informations.",
         ];
     }
 }

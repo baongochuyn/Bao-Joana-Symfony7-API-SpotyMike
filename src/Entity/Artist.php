@@ -29,6 +29,12 @@ class Artist
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface$dateBegin = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface$dateEnd = null;
+
     #[ORM\ManyToMany(targetEntity: Song::class, mappedBy: 'Artist_idUser')]
     private Collection $songs;
 
@@ -94,6 +100,30 @@ class Artist
         return $this;
     }
 
+    public function getDateBegin(): ?\DateTimeInterface
+    {
+        return $this->dateBegin;
+    }
+
+    public function setDateBegin(?\DateTimeInterface $dateBegin): static
+    {
+        $this->dateBegin = $dateBegin;
+
+        return $this;
+    }
+
+    public function getDateEnd(): ?\DateTimeInterface
+    {
+        return $this->dateEnd;
+    }
+
+    public function setDateEnd(?\DateTimeInterface $dateEnd): static
+    {
+        $this->dateEnd = $dateEnd;
+
+        return $this;
+    }
+
     /**
      * @return Collection<int, Song>
      */
@@ -154,11 +184,11 @@ class Artist
     {
         return [
             "id" => $this->getId(),
-            //"idUser" => ($children) ? $this->getUserIdUser() : null,
             "fullname" => $this->getFullname(),
             "label" => $this->getLabel(),
             "description" => $this->getDescription(),
-            "songs" => $this->getSongs()
+            "songs" => $this->getSongs(),
+            "user"=> $this->getUserIdUser()
         ];
     }
 }

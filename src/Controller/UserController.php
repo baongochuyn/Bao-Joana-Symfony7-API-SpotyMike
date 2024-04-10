@@ -219,12 +219,6 @@ class UserController extends AbstractController
         }
         $user = $dataMiddellware;
         
-        if(!$user){
-            return $this->json([
-                'message' => 'user not found !!! ',
-                
-            ]);
-        }
         try{
             if (isset($requestData)) {
                 if(isset($requestData['firstname'])){
