@@ -35,6 +35,9 @@ class Artist
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface$dateEnd = null;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface$createAt = null;
+
     #[ORM\Column(nullable: true)]
     private ?bool $active = null;
 
@@ -127,6 +130,18 @@ class Artist
         return $this;
     }
 
+    public function getCreateAt(): ?\DateTimeInterface
+    {
+        return $this->createAt;
+    }
+
+    public function setCreateAt(?\DateTimeInterface $createAt): static
+    {
+        $this->createAt = $createAt;
+
+        return $this;
+    }
+
     public function getActive(): ?bool
     {
         return $this->active;
@@ -202,8 +217,9 @@ class Artist
             "fullname" => $this->getFullname(),
             "label" => $this->getLabel(),
             "description" => $this->getDescription(),
+            "album" => $this->getAlbums(),
             "songs" => $this->getSongs(),
-           // "user"=> $this->getUserIdUser()
+            "user"=> $children ? $this->getUserIdUser() : []
         ];
     }
 }

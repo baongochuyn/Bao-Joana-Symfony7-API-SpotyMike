@@ -310,7 +310,8 @@ class UserController extends AbstractController
         //supprimer artiste
         $artist = $this->artistRepository->findOneBy(['User_idUser'=> $user->getId()]);
         if($artist){
-            $this->entityManager->remove($artist);
+            //$this->entityManager->remove($artist);
+            $artist->setActive(false);
         }
         
         $this->entityManager->flush();
@@ -322,7 +323,7 @@ class UserController extends AbstractController
     }
 
     #[Route('/password-lost', name: 'password_lost', methods: ['POST'])]
-    public function passwordLost(Request $request): JsonResponse
+    public function passwordLost(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
     {
         $requestData = $request->request->all();
         if(!isset($requestData['email'])){
@@ -375,6 +376,7 @@ class UserController extends AbstractController
                 }
         return $this->json([
             'error'=>false,
+            'token'=> $JWTManager->create($dataUser),
             'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre address email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe."
         ]);
     }

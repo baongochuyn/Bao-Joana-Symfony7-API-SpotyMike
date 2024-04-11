@@ -30,6 +30,9 @@ class Album
     #[ORM\Column]
     private ?int $year = 2024;
 
+    #[ORM\Column]
+    private ?\DateTimeImmutable $createAt = null;
+
     #[ORM\ManyToOne(inversedBy: 'albums')]
     private ?Artist $artist_User_idUser = null;
 
@@ -106,6 +109,18 @@ class Album
         return $this;
     }
 
+     public function getCreateAt(): ?\DateTimeInterface
+    {
+        return $this->createAt;
+    }
+
+    public function setCreateAt(?\DateTimeInterface $createAt): static
+    {
+        $this->createAt = $createAt;
+
+        return $this;
+    }
+    
     public function getArtistUserIdUser(): ?Artist
     {
         return $this->artist_User_idUser;
@@ -147,7 +162,7 @@ class Album
 
         return $this;
     }
-    public function serializer(){
+    public function serializer($children = false){
         $songs = [];
         foreach ($this->getSongIdSong() as $song) {
             $songs[] = $song->serializer();
@@ -158,7 +173,8 @@ class Album
             "categ"=>$this->getCateg(),
             "cover"=>$this->getCover(),
             //"createAt"=> $this->getCreateAt()->format('Y-m-d\\TH:i:sP'),
-            "songs"=>$songs
+            "songs"=>$songs,
+            "user"=> $children ? $this->getArtistUserIdUser() : []
         ]);
     }
 }
