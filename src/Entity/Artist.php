@@ -29,6 +29,18 @@ class Artist
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface$dateBegin = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface$dateEnd = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface$createAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?bool $active = null;
+
     #[ORM\ManyToMany(targetEntity: Song::class, mappedBy: 'Artist_idUser')]
     private Collection $songs;
 
@@ -94,6 +106,54 @@ class Artist
         return $this;
     }
 
+    public function getDateBegin(): ?\DateTimeInterface
+    {
+        return $this->dateBegin;
+    }
+
+    public function setDateBegin(?\DateTimeInterface $dateBegin): static
+    {
+        $this->dateBegin = $dateBegin;
+
+        return $this;
+    }
+
+    public function getDateEnd(): ?\DateTimeInterface
+    {
+        return $this->dateEnd;
+    }
+
+    public function setDateEnd(?\DateTimeInterface $dateEnd): static
+    {
+        $this->dateEnd = $dateEnd;
+
+        return $this;
+    }
+
+    public function getCreateAt(): ?\DateTimeInterface
+    {
+        return $this->createAt;
+    }
+
+    public function setCreateAt(?\DateTimeInterface $createAt): static
+    {
+        $this->createAt = $createAt;
+
+        return $this;
+    }
+
+    public function getActive(): ?bool
+    {
+        return $this->active;
+    }
+
+    public function setActive(?bool $active): static
+    {
+        $this->active = $active;
+
+        return $this;
+    }
+    
     /**
      * @return Collection<int, Song>
      */
@@ -154,11 +214,12 @@ class Artist
     {
         return [
             "id" => $this->getId(),
-            //"idUser" => ($children) ? $this->getUserIdUser() : null,
             "fullname" => $this->getFullname(),
             "label" => $this->getLabel(),
             "description" => $this->getDescription(),
-            "songs" => $this->getSongs()
+            "album" => $this->getAlbums(),
+            "songs" => $this->getSongs(),
+            "user"=> $children ? $this->getUserIdUser() : []
         ];
     }
 }

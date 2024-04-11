@@ -51,7 +51,7 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?bool $active = null;
 
-    #[ORM\OneToOne(mappedBy: 'User_idUser', cascade: ['persist', 'remove'])]
+    #[ORM\OneToOne(mappedBy: 'User_idUser', cascade: ['persist'])]
     private ?Artist $artist = null;
 
     public function getId(): ?int
@@ -220,14 +220,14 @@ class User  implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->getEmail();
     }
 
-    public function serializer(){
+    public function serializer(bool $children = false){
         return ([
             "firstname"=>$this->getFirstname(),
             "lastname"=>$this->getLastname(),
             "email"=>$this->getEmail(),
             "tel"=>$this->getTel(),
             "sexe"=>$this->getSexe(),
-            "artist"=>$this->getArtist() ?  $this->getArtist()->serializer() : [],
+            "artist"=> $children ?  $this->getArtist()->serializer(true) : [],
             "birthday"=>$this->getDateBirth()->format('d-m-Y'),
             "createAt"=> $this->getCreateAt()->format('Y-m-d\\TH:i:sP'),
            // "updateAt"=>$this->getUpdateAt()->format('Y-m-d\\TH:i:sP')

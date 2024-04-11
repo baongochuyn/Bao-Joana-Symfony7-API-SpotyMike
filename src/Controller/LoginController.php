@@ -99,12 +99,12 @@ class LoginController extends AbstractController
                             'token'=> $JWTManager->create($user)
                         ]);
                     } 
+                }else{
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le compte n'est plus actif ou est suspendu.",
+                    ],403);
                 }
-            }else{
-                return $this->json([
-                    'error'=>true,
-                    'message'=> "Le compte n'est plus actif ou est suspendu.",
-                ],403);
             }
         }
         return $this->json([
