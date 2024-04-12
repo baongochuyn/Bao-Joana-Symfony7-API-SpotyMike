@@ -29,6 +29,7 @@ class ArtistController extends AbstractController
 
     private function UpdateArtist(Request $request, Artist $artist): JsonResponse
     {
+        $requestData = $request->request->all();
         if(!$artist){
             return $this->json([
                 'error'=>true,
@@ -158,11 +159,7 @@ class ArtistController extends AbstractController
         if(gettype($dataMiddellware) == 'boolean'){
             return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
         }
-        $user = $dataMiddellware;
-        
-        // SELECT *
-        // FROM user
-        // RIGHT JOIN artist ON user.id = artist.user_id_user_id
+
         $query = $this->entityManager->createQueryBuilder()
         // ->select('u.firstname','u.lastname','u.sexe', 'u.dateBirth','a.createAt')
         // ->from(Artist::class, 'a')
@@ -177,26 +174,26 @@ class ArtistController extends AbstractController
         ->where('a.active = 1');
 
         $result = $query->getQuery()->getResult();
-        //dd($result);
         $serializedData = [];
         foreach ($result as $artist) {
-            // Tạo một mảng để lưu trữ thông tin về nghệ sĩ và các album của họ
             $artistData = [
                 'firstname' => $artist->getUserIdUser()->getFirstname(),
                 'lastname' => $artist->getUserIdUser()->getLastname(),
                 'sexe' => $artist->getUserIdUser()->getSexe(),
-                'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('Y-m-d'),
+                'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
                 'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
                 'albums' => []
             ];
         
-            
             foreach ($artist->getAlbums() as $album) {
                 $songsData = [];
                 foreach ($album->getSongIdSong() as $song) {
                     $songsData[] = [
                         'id' => $song->getId(),
                         'title' => $song->getTitle(),
+                        "cover"=>$song->getCover(),
+                        "stream"=>$song->getUrl(),
+                        "createAt"=> $song->getCreateAt()->format('Y-m-d H:i:s')
                     ];
                 }
         
@@ -210,17 +207,32 @@ class ArtistController extends AbstractController
                     'songs' => $songsData
                 ];
             }
-        
-            // Thêm thông tin về nghệ sĩ và các album của họ vào mảng chính
             $serializedData[] = $artistData;
         }
         //dd($serializedArtists);
+        
+        $requestData = $request->request->all();
+        //dd($requestData);
+        $currentPage = isset($requestData['currentPage']) ? $requestData['currentPage'] : 1;
+        //dd($currentPage);
+        $itemsPerPage = 5;
+        //$currentPage = $request->query->getInt('currentPage', 1);
+        $startIndex = ($currentPage - 1) * $itemsPerPage;
+        $dataForCurrentPage = array_slice($serializedData, $startIndex, $itemsPerPage);
+        $totalPages = ceil(count($serializedData) / $itemsPerPage);
+
+       
+        $pagination = [
+        'currentPage' => $currentPage,
+        'totalPage' => $totalPages,
+        'totalArtist' => count($serializedData)
+        ];
 
         return $this->json([
             'error'=>false,
-            'artists'=> $serializedData,
-            'message'=>"Informations des artistes récupérées avec succès."
-
+            'artists'=> $dataForCurrentPage,
+            'message'=>"Informations des artistes récupérées avec succès.",
+            'pagination'=> $pagination
         ]);
     }
 
@@ -332,24 +344,68 @@ class ArtistController extends AbstractController
                 'message'=> "Le format du nom d'artiste fourni est invalide."
             ],400);
         }
-        $artist = $this->repository->findOneBy(['fullname' => $fullname]);
-        if(!$artist){
+        
+        //get an artist
+            
+        $query = $this->entityManager->createQueryBuilder()
+        ->select('a', 'u', 'al', 's')
+        ->from(Artist::class, 'a')
+        ->leftJoin('a.User_idUser', 'u')
+        ->leftJoin('a.albums', 'al')
+        ->leftJoin('a.songs', 's')
+        ->where('a.active = 1')
+        ->andWhere('a.fullname = :fullname')
+        ->setParameter('fullname', $fullname);
+
+        $result = $query->getQuery()->getResult();
+        //$artist = $this->repository->findOneBy(['fullname' => $fullname]);
+        if(!$result){
             return $this->json([
                 'error'=>true,
                 'message'=> "Aucun artiste trouvé correspondant au nom fourni.",
             ],404);
         }
         
-
-        if($artist->getUserIdUser($user)){
-            //il peut regarder private & public
-        }else{
-            //il ne peut regarder que public
+        $serializedData = [];
+        foreach ($result as $artist) {
+           
+            $artistData = [
+                'firstname' => $artist->getUserIdUser()->getFirstname(),
+                'lastname' => $artist->getUserIdUser()->getLastname(),
+                'sexe' => $artist->getUserIdUser()->getSexe(),
+                'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
+                'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
+                'albums' => []
+            ];
+        
+            foreach ($artist->getAlbums() as $album) {
+                $songsData = [];
+                foreach ($album->getSongIdSong() as $song) {
+                    $songsData[] = [
+                        'id' => $song->getId(),
+                        'title' => $song->getTitle(),
+                        "cover"=>$song->getCover(),
+                        "stream"=>$song->getUrl(),
+                        "createAt"=> $song->getCreateAt()->format('Y-m-d H:i:s')
+                    ];
+                }
+        
+                $artistData['albums'][] = [
+                    'id' => $album->getId(),
+                    'name' => $album->getNom(),
+                    'category' => $album->getCateg(),
+                    'cover' => $album->getCover(),
+                    'year' => $album->getYear(),
+                    'createdAt' => $album->getCreateAt()->format('Y-m-d H:i:s'),
+                    'songs' => $songsData
+                ];
+            }
+            $serializedData[] = $artistData;
         }
 
         return $this->json([
             'error'=>false,
-           // 'artists'=> $result
+            'artists'=> $serializedData
         ]);
     }
 }
