@@ -9,6 +9,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\SerializerInterface;
 
 class ArtistController extends AbstractController
 {
@@ -35,7 +37,7 @@ class ArtistController extends AbstractController
     }
 
     #[Route('/artists/{id}', name: 'artist_show', methods: ['GET'])]
-    public function show($id): JsonResponse
+    public function show($id, SerializerInterface $serializer): JsonResponse
     {
         $artist = $this->artistRepository->find($id);
 
@@ -46,10 +48,9 @@ class ArtistController extends AbstractController
             ], 404);
         }
 
-        return $this->json([
-            'artist' => $artist,
-            'path' => 'src/Controller/ArtistController.php',
-        ]);
+        $data = $serializer->serialize($artist, 'json', ['groups' => 'exclude']);
+
+        return JsonResponse::fromJsonString($data);
     }
 
     #[Route('/artists', name: 'artist_create', methods: ['POST'])]
@@ -86,7 +87,7 @@ class ArtistController extends AbstractController
     }
 
     #[Route('/artists/{id}', name: 'artist_update', methods: ['PUT'])]
-    public function update($id, Request $request): JsonResponse
+    public function update($id, Request $request, SerializerInterface $serializer): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
@@ -124,10 +125,9 @@ class ArtistController extends AbstractController
 
         $this->entityManager->flush();
 
-        return $this->json([
-            'success' => true,
-            'message' => 'Les informations de l\'artiste ont été mises à jour avec succès.',
-        ]);
+        $responseData = $serializer->serialize($artist, 'json', ['groups' => 'exclude']);
+
+        return JsonResponse::fromJsonString($responseData);
     }
 
     #[Route('/artists/{id}', name: 'artist_delete', methods: ['DELETE'])]
