@@ -179,7 +179,7 @@ class ArtistController extends AbstractController
             $artistData = [
                 'firstname' => $artist->getUserIdUser()->getFirstname(),
                 'lastname' => $artist->getUserIdUser()->getLastname(),
-                'sexe' => $artist->getUserIdUser()->getSexe(),
+                'sexe' => ($artist->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
                 'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
                 'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
                 'albums' => []
@@ -211,19 +211,23 @@ class ArtistController extends AbstractController
         }
         //dd($serializedArtists);
         
-        $requestData = $request->request->all();
-        //dd($requestData);
+        $requestData = $request->query->all();
         $currentPage = isset($requestData['currentPage']) ? $requestData['currentPage'] : 1;
-        //dd($currentPage);
-        $itemsPerPage = 5;
-        //$currentPage = $request->query->getInt('currentPage', 1);
-        $startIndex = ($currentPage - 1) * $itemsPerPage;
-        $dataForCurrentPage = array_slice($serializedData, $startIndex, $itemsPerPage);
+        $itemsPerPage = 2;
         $totalPages = ceil(count($serializedData) / $itemsPerPage);
 
-       
+        if ($currentPage > $totalPages) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Aucun artist trouvé pour la page demandée.'
+            ], 404);
+        }
+        
+        $startIndex = ($currentPage - 1) * $itemsPerPage;
+        $dataForCurrentPage = array_slice($serializedData, $startIndex, $itemsPerPage);
+
         $pagination = [
-        'currentPage' => $currentPage,
+        'currentPage' => (int)($currentPage),
         'totalPage' => $totalPages,
         'totalArtist' => count($serializedData)
         ];
@@ -372,7 +376,7 @@ class ArtistController extends AbstractController
             $artistData = [
                 'firstname' => $artist->getUserIdUser()->getFirstname(),
                 'lastname' => $artist->getUserIdUser()->getLastname(),
-                'sexe' => $artist->getUserIdUser()->getSexe(),
+                'sexe' => ($artist->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
                 'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
                 'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
                 'albums' => []
