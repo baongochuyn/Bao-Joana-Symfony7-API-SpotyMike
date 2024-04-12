@@ -42,7 +42,7 @@ class ArtistController extends AbstractController
         if (!$artist) {
             return $this->json([
                 'error' => true,
-                'message' => 'Artiste non trouvé; Aucun artiste trouvé correspondant à l\'ID fourni.',
+                'message' => 'Artiste non trouvé. Vérifiez les informations fournies.',
             ], 404);
         }
 
@@ -68,7 +68,7 @@ class ArtistController extends AbstractController
         if (!$user) {
             return $this->json([
                 'error' => true,
-                'message' => 'Authentification requise. Vous devez être connecté.',
+                'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.',
             ], 401);
         }
 
@@ -80,6 +80,7 @@ class ArtistController extends AbstractController
         $this->entityManager->flush();
 
         return $this->json([
+            'success' => true,
             'message' => 'Votre compte a été créé avec succès. Bienvenue dans notre communauté d\'artistes !',
         ]);
     }
@@ -93,25 +94,38 @@ class ArtistController extends AbstractController
         if (!$artist) {
             return $this->json([
                 'error' => true,
-                'message' => 'Artiste non trouvé; Aucun artiste trouvé correspondant à l\'ID fourni.',
+                'message' => 'Artiste non trouvé. Vérifiez les informations fournies.',
             ], 404);
         }
 
-        if ($artist->getUser() !== $this->getUser()) {
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.',
+            ], 401);
+        }
+
+        if ($artist->getUser() !== $user) {
             return $this->json([
                 'error' => true,
                 'message' => 'Mise à jour non autorisée. Vous n\'avez pas les droits requis pour modifier les informations de cet artiste.',
             ], 403);
         }
 
-        if (isset($data['fullname'])) {
-            $fullname = $data['fullname'];
-            $artist->setFullname($fullname);
+        if (!isset($data['fullname'])) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Le nom d\'artiste est obligatoire pour cette requête.',
+            ], 400);
         }
+
+        $artist->setFullname($data['fullname']);
 
         $this->entityManager->flush();
 
         return $this->json([
+            'success' => true,
             'message' => 'Les informations de l\'artiste ont été mises à jour avec succès.',
         ]);
     }
@@ -124,11 +138,19 @@ class ArtistController extends AbstractController
         if (!$artist) {
             return $this->json([
                 'error' => true,
-                'message' => 'Artiste non trouvé; Aucun artiste trouvé correspondant à l\'ID fourni.',
+                'message' => 'Artiste non trouvé. Vérifiez les informations fournies.',
             ], 404);
         }
 
-        if ($artist->getUser() !== $this->getUser()) {
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Authentification requise. Vous devez être connecté pour effectuer cette action.',
+            ], 401);
+        }
+
+        if ($artist->getUser() !== $user) {
             return $this->json([
                 'error' => true,
                 'message' => 'Suppression non autorisée. Vous n\'avez pas les droits requis pour supprimer cet artiste.',
@@ -139,7 +161,8 @@ class ArtistController extends AbstractController
         $this->entityManager->flush();
 
         return $this->json([
+            'success' => true,
             'message' => 'L\'artiste a été supprimé avec succès.',
         ]);
     }
-} 
+}
