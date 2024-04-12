@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Artist;
 use App\Entity\User;
+use Doctrine\Migrations\Query\Query;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Lexik\Bundle\JWTAuthenticationBundle\LexikJWTAuthenticationBundle;
@@ -174,7 +175,7 @@ class UserController extends AbstractController
                 }
             }
             if(isset($requestData['tel'])){
-                if(preg_match("/^[0-9]{3} [0-9]{4} [0-9]{4}$/", $requestData['tel'])){
+                if(preg_match('/^[0-9]{10}+$/', $requestData['tel'])){
                     $dataUser = $this->repository->findOneBy(["tel"=>$requestData['tel']]);
                     if($dataUser){
                         return $this->json([
@@ -225,7 +226,7 @@ class UserController extends AbstractController
                     if(!preg_match("/^[a-zA-Z\-']+$/", $requestData['firstname'])){
                         return $this->json([
                             'error'=>true,
-                            'message'=> "Le format du prénom est invalide",
+                            'message'=> "Le format du nom est invalide",
                         ],400);
                     } 
                     $user->setFirstname($requestData['firstname']);
@@ -240,7 +241,7 @@ class UserController extends AbstractController
                     $user->setLastname($requestData['lastname']); 
                 }
                 if(isset($requestData['tel'])){
-                    if(preg_match("/^[0-9]{3} [0-9]{4} [0-9]{4}$/", $requestData['tel'])){
+                    if(preg_match('/^[0-9]{10}+$/', $requestData['tel'])){
                         $dataUser = $this->repository->findOneBy(["tel"=>$requestData['tel']]);
                         if($dataUser){
                             return $this->json([
@@ -347,33 +348,33 @@ class UserController extends AbstractController
         }
 
         $userEmail = str_replace('@', '', $requestData['email']);
-                $userKey  = "password_attempts_$userEmail";
-    
-                if (!$this->cache->hasItem($userKey)) {
-                    // if not exist, create a new key with value 1
-                    $loginControl = new RequestControl();
-                    $loginControl->number = 1;
-                    $loginControl->time = time() ;
-                    $this->cache->save($this->cache->getItem($userKey)->set($loginControl)->expiresAfter(300));
-                    //dd($this->cache->getItem($userKey)->get());
-                }else{
-                    $cacheItem = $this->cache->getItem($userKey);
-                    $currentLogin = $cacheItem->get();
-    
-                    //dd($this->cache->getItem($userKey)->get());
-                    if ($currentLogin->number >= 3 && time() - $currentLogin->time < 300) {
-                        $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
-                        //dd($waitTime);
-                        return $this->json([
-                            'error'=>true,
-                            'message'=> "Trop de demandes de réinitialisation de mot de passe (3 max). Veuillez attendre avant de réessayer ( dans $waitTime min).",
-                        ],429);
-                    }
-                    $currentLogin->number++;
-                    $currentLogin->time = time();
-                    $cacheItem->set($currentLogin)->expiresAfter(300);
-                    $this->cache->save($cacheItem);
-                }
+        $userKey  = "password_attempts_$userEmail";
+
+        if (!$this->cache->hasItem($userKey)) {
+            // if not exist, create a new key with value 1
+            $loginControl = new RequestControl();
+            $loginControl->number = 1;
+            $loginControl->time = time() ;
+            $this->cache->save($this->cache->getItem($userKey)->set($loginControl)->expiresAfter(300));
+            //dd($this->cache->getItem($userKey)->get());
+        }else{
+            $cacheItem = $this->cache->getItem($userKey);
+            $currentLogin = $cacheItem->get();
+
+            //dd($this->cache->getItem($userKey)->get());
+            if ($currentLogin->number >= 3 && time() - $currentLogin->time < 300) {
+                $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
+                //dd($waitTime);
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Trop de demandes de réinitialisation de mot de passe (3 max). Veuillez attendre avant de réessayer ( dans $waitTime min).",
+                ],429);
+            }
+            $currentLogin->number++;
+            $currentLogin->time = time();
+            $cacheItem->set($currentLogin)->expiresAfter(300);
+            $this->cache->save($cacheItem);
+        }
         return $this->json([
             'error'=>false,
             'token'=> $JWTManager->create($dataUser),
@@ -384,8 +385,7 @@ class UserController extends AbstractController
     #[Route('/reset-password/{token}', name: 'reset-password', methods: ['GET'])]
     public function resetPassword(Request $request,string $token,UserPasswordHasherInterface $passwordHash): JsonResponse
     {
-        $requestData = $request->request->all();
-        dd($requestData);
+        $requestData = $request->query->all();
         if(!isset($requestData['password'])){
             return $this->json([
                 'error'=>true,

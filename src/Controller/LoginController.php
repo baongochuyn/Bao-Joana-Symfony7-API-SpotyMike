@@ -52,37 +52,36 @@ class LoginController extends AbstractController
                     'message'=> "Le format de l'email est invalide",
                 ],400);
             }
-            if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $data['Password']) || strlen($data['Password']) < 8){
-                
-                $userEmail = str_replace('@', '', $data['Email']);
-                $userKey  = "login_attempts_$userEmail";
-    
-                if (!$this->cache->hasItem($userKey)) {
-                    // if not exist, create a new key with value 1
-                    $loginControl = new RequestControl();
-                    $loginControl->number = 1;
-                    $loginControl->time = time() ;
-                    $this->cache->save($this->cache->getItem($userKey)->set($loginControl)->expiresAfter(300));
-                    //dd($this->cache->getItem($userKey));
-                }else{
-                    $cacheItem = $this->cache->getItem($userKey);
-                    $currentLogin = $cacheItem->get();
-                    //dd( $this->cache->getItem($userKey));
+            $userEmail = str_replace('@', '', $data['Email']);
+            $userKey  = "login_attempts_$userEmail";
 
-                        if ($currentLogin->number >= 5 && time() - $currentLogin->time < 300) {
-                            $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
-                            //dd($waitTime);
-                            return $this->json([
-                                'error'=>true,
-                                'message'=> "Trop de tentatives de connexion (5max). Veuillez réessayer ulterieurement - $waitTime min d'attente.",
-                            ],429);
-                        }
-                        $currentLogin->number++;
-                        $currentLogin->time = time();
-                        $cacheItem->set($currentLogin);
-                        $cacheItem->expiresAfter(300);
-                        $this->cache->save($cacheItem);
-                }
+            if (!$this->cache->hasItem($userKey)) {
+                // if not exist, create a new key with value 1
+                $loginControl = new RequestControl();
+                $loginControl->number = 1;
+                $loginControl->time = time() ;
+                $this->cache->save($this->cache->getItem($userKey)->set($loginControl)->expiresAfter(300));
+                //dd($this->cache->getItem($userKey));
+            }else{
+                $cacheItem = $this->cache->getItem($userKey);
+                $currentLogin = $cacheItem->get();
+                //dd( $this->cache->getItem($userKey));
+
+                    if ($currentLogin->number >= 5 && time() - $currentLogin->time < 300) {
+                        $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
+                        //dd($waitTime);
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Trop de tentatives de connexion (5max). Veuillez réessayer ulterieurement - $waitTime min d'attente.",
+                        ],429);
+                    }
+                    $currentLogin->number++;
+                    $currentLogin->time = time();
+                    $cacheItem->set($currentLogin);
+                    $cacheItem->expiresAfter(300);
+                    $this->cache->save($cacheItem);
+            }
+            if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $data['Password']) || strlen($data['Password']) < 8){
                 return $this->json([
                     'error'=>true,
                     'message'=> "Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",

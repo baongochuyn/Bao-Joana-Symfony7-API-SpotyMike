@@ -23,10 +23,27 @@ class TokenVerifierService {
     }
 
     public function checkToken(Request $request){
-        if( $request->headers->has('Authorization')){
-            $data =  explode(" ", $request->headers->get('Authorization'));
-            if(count($data) == 2){
-                $token = $data[1];
+        $query = $request->query->all();
+        if( $request->headers->has('Authorization') || isset($query["token"])){
+            $token = "";
+            
+            if(isset($query["token"])){
+                $token = $query["token"];
+                try {
+                    $dataToken = $this->jwtProvider->load($token);
+                    if($dataToken->isVerified($token)){
+                        $user = $this->userRepository->findOneBy(["email" => $dataToken->getPayload()["username"]]);
+                        return ($user) ? $user : false;
+                    }
+                } catch (\Throwable $th) {
+                    return false;
+                }
+            }
+            else if( $request->headers->has('Authorization')){
+                $data = explode(" ", $request->headers->get('Authorization'));
+                if(count($data) == 2){
+                    $token = $data[1];
+                }
                 try {
                     $dataToken = $this->jwtProvider->load($token);
                     if($dataToken->isVerified($token)){
