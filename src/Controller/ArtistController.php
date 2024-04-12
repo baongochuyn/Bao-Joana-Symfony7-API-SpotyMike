@@ -142,4 +142,4 @@ class ArtistController extends AbstractController
             'message' => 'L\'artiste a été supprimé avec succès.',
         ]);
     }
-}
+} 
