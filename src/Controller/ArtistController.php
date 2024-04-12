@@ -14,13 +14,13 @@ class ArtistController extends AbstractController
 {
     private $entityManager;
     private $artistRepository;
+    private $userRepository;
 
     public function __construct(EntityManagerInterface $entityManager)
     {
         $this->entityManager = $entityManager;
         $this->artistRepository = $entityManager->getRepository(Artist::class);
         $this->userRepository = $entityManager->getRepository(User::class);
-
     }
 
     #[Route('/artists', name: 'artists_index', methods: ['GET'])]
@@ -34,16 +34,49 @@ class ArtistController extends AbstractController
         ]);
     }
 
+    #[Route('/artists/{id}', name: 'artist_show', methods: ['GET'])]
+    public function show($id): JsonResponse
+    {
+        $artist = $this->artistRepository->find($id);
+
+        if (!$artist) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Artiste non trouvé; Aucun artiste trouvé correspondant à l\'ID fourni.',
+            ], 404);
+        }
+
+        return $this->json([
+            'artist' => $artist,
+            'path' => 'src/Controller/ArtistController.php',
+        ]);
+    }
+
     #[Route('/artists', name: 'artist_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
         $data = $request->request->all();
+
+        if (!isset($data['label']) || !isset($data['fullname'])) {
+            return $this->json([
+                'error' => true,
+                'message' => 'L\'id du label et le fullname sont obligatoires.',
+            ], 400);
+        }
+
         $user = $this->userRepository->findOneBy(['id'=>$data['idUser']]);
+
+        if (!$user) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Utilisateur non trouvé; L\'utilisateur avec cet ID n\'existe pas.',
+            ], 404);
+        }
 
         $artist = new Artist();
         $artist->setUserIdUser($user);
         $artist->setLabel($data['label']);
-        $artist->setDescription($data['description']);
+        $artist->setDescription($data['description'] ?? '');
         $artist->setFullname($data['fullname']);
         
         $this->entityManager->persist($artist);
@@ -55,68 +88,40 @@ class ArtistController extends AbstractController
         ]);
     }
 
-    #[Route('/artists/{id}', name: 'artist_show', methods: ['GET'])]
-    public function show($id): JsonResponse
-    {
-        $artist = $this->artistRepository->find($id);
-
-        if (!$artist) {
-            return $this->json([
-                'error' => 'Artist not found!',
-            ], 404);
-        }
-
-        return $this->json([
-            'artist' => $artist,
-            'path' => 'src/Controller/ArtistController.php',
-        ]);
-    }
-
     #[Route('/artists/{id}', name: 'artist_update', methods: ['PUT'])]
     public function update($id, Request $request): JsonResponse
     {
         $artist = $this->artistRepository->findOneBy(['id'=> $id]);
-        $user = $this->userRepository->findOneBy(['id'=>$data['idUser']]);
-
+        $requestData = json_decode($request->getContent(), true);
+        $user = $this->userRepository->findOneBy(['id'=>$requestData['idUser']]);
 
         if (!$artist) {
             return $this->json([
-                'error' => 'Artist not found!',
+                'error' => true,
+                'message' => 'Artiste non trouvé; Aucun artiste trouvé correspondant à l\'ID fourni.',
             ], 404);
         }
 
-    
-    if(isset($requestData['User'])){
-        $user->setUserIdUser($requestUser[$user]);
-    }
-    if(isset($requestData['label'])){
-        $artist->setLabel($requestData['label']);
-    }
-    if(isset($requestData['description'])){
-        $artist->setDescription($requestData['description']);
-    }
-    if(isset($requestData['fullname'])){
-        $artist->setFullname($requestData['fullname']);
+        if(isset($requestData['label'])){
+            $artist->setLabel($requestData['label']);
+        }
+        if(isset($requestData['description'])){
+            $artist->setDescription($requestData['description']);
+        }
+        if(isset($requestData['fullname'])){
+            $artist->setFullname($requestData['fullname']);
+        }
+        if(isset($requestData['idUser'])){
+            $artist->setUserIdUser($user);
+        }
    
-    $this->entityManager->flush();
-
-    // return $this->json([
-
-    //     $requestData = $request->request->all();
-
-    //     $artist->setName($data['name']); 
-    //     $artist->setLabel($data['label']);
-    //     $artist->setDescription($data['description']);
-    //     $artist->setFullname($data['fullname']);
-        
-    //     $this->entityManager->flush();
+        $this->entityManager->flush();
 
         return $this->json([
             'message' => 'Artist updated successfully!',
             'path' => 'src/Controller/ArtistController.php',
         ]);
-    }}
-
+    }
 
     #[Route('/artists/{id}', name: 'artist_delete', methods: ['DELETE'])]
     public function delete($id): JsonResponse
@@ -125,7 +130,8 @@ class ArtistController extends AbstractController
 
         if (!$artist) {
             return $this->json([
-                'error' => 'Artist not found!',
+                'error' => true,
+                'message' => 'Artiste non trouvé; Aucun artiste trouvé correspondant à l\'ID fourni.',
             ], 404);
         }
 
