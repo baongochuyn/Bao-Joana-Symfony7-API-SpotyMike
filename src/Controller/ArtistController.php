@@ -9,8 +9,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Serializer\Annotation\Groups;
-use Symfony\Component\Serializer\SerializerInterface;
 
 class ArtistController extends AbstractController
 {
@@ -30,14 +28,19 @@ class ArtistController extends AbstractController
     {
         $artists = $this->artistRepository->findAll();
 
+        $artistsArray = [];
+        foreach ($artists as $artist) {
+            $artistsArray[] = $this->serializeArtist($artist);
+        }
+
         return $this->json([
-            'artists' => $artists,
+            'artists' => $artistsArray,
             'path' => 'src/Controller/ArtistController.php',
         ]);
     }
 
     #[Route('/artists/{id}', name: 'artist_show', methods: ['GET'])]
-    public function show($id, SerializerInterface $serializer): JsonResponse
+    public function show($id): JsonResponse
     {
         $artist = $this->artistRepository->find($id);
 
@@ -48,9 +51,11 @@ class ArtistController extends AbstractController
             ], 404);
         }
 
-        $data = $serializer->serialize($artist, 'json', ['groups' => 'exclude']);
-
-        return JsonResponse::fromJsonString($data);
+        return $this->json([
+            'id' => $artist->getId(),
+            'fullname' => $artist->getFullname(),
+            // Ajoutez d'autres propriétés de l'artiste selon vos besoins...
+        ]);
     }
 
     #[Route('/artists', name: 'artist_create', methods: ['POST'])]
@@ -87,7 +92,7 @@ class ArtistController extends AbstractController
     }
 
     #[Route('/artists/{id}', name: 'artist_update', methods: ['PUT'])]
-    public function update($id, Request $request, SerializerInterface $serializer): JsonResponse
+    public function update($id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
@@ -125,9 +130,10 @@ class ArtistController extends AbstractController
 
         $this->entityManager->flush();
 
-        $responseData = $serializer->serialize($artist, 'json', ['groups' => 'exclude']);
-
-        return JsonResponse::fromJsonString($responseData);
+        return $this->json([
+            'success' => true,
+            'message' => 'L\'artiste a été mis à jour avec succès.',
+        ]);
     }
 
     #[Route('/artists/{id}', name: 'artist_delete', methods: ['DELETE'])]
@@ -164,5 +170,14 @@ class ArtistController extends AbstractController
             'success' => true,
             'message' => 'L\'artiste a été supprimé avec succès.',
         ]);
+    }
+
+    private function serializeArtist(Artist $artist): array
+    {
+        return [
+            'id' => $artist->getId(),
+            'fullname' => $artist->getFullname(),
+            
+        ];
     }
 }
