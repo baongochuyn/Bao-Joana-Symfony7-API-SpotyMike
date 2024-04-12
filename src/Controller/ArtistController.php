@@ -55,46 +55,41 @@ class ArtistController extends AbstractController
     #[Route('/artists', name: 'artist_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        $data = $request->request->all();
+        $data = json_decode($request->getContent(), true);
 
-        if (!isset($data['label']) || !isset($data['fullname'])) {
+        if (!isset($data['fullname'])) {
             return $this->json([
                 'error' => true,
-                'message' => 'L\'id du label et le fullname sont obligatoires.',
+                'message' => 'Le nom d\'artiste est obligatoire pour cette requête.',
             ], 400);
         }
 
-        $user = $this->userRepository->findOneBy(['id'=>$data['idUser']]);
-
+        $user = $this->getUser();
         if (!$user) {
             return $this->json([
                 'error' => true,
-                'message' => 'Utilisateur non trouvé; L\'utilisateur avec cet ID n\'existe pas.',
-            ], 404);
+                'message' => 'Authentification requise. Vous devez être connecté.',
+            ], 401);
         }
 
         $artist = new Artist();
-        $artist->setUserIdUser($user);
-        $artist->setLabel($data['label']);
-        $artist->setDescription($data['description'] ?? '');
         $artist->setFullname($data['fullname']);
-        
+        $artist->setUser($user);
+
         $this->entityManager->persist($artist);
         $this->entityManager->flush();
 
         return $this->json([
-            'message' => 'Artist created successfully!',
-            'path' => 'src/Controller/ArtistController.php',
+            'message' => 'Votre compte a été créé avec succès. Bienvenue dans notre communauté d\'artistes !',
         ]);
     }
 
     #[Route('/artists/{id}', name: 'artist_update', methods: ['PUT'])]
     public function update($id, Request $request): JsonResponse
     {
-        $artist = $this->artistRepository->findOneBy(['id'=> $id]);
-        $requestData = json_decode($request->getContent(), true);
-        $user = $this->userRepository->findOneBy(['id'=>$requestData['idUser']]);
+        $data = json_decode($request->getContent(), true);
 
+        $artist = $this->artistRepository->find($id);
         if (!$artist) {
             return $this->json([
                 'error' => true,
@@ -102,24 +97,22 @@ class ArtistController extends AbstractController
             ], 404);
         }
 
-        if(isset($requestData['label'])){
-            $artist->setLabel($requestData['label']);
+        if ($artist->getUser() !== $this->getUser()) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Mise à jour non autorisée. Vous n\'avez pas les droits requis pour modifier les informations de cet artiste.',
+            ], 403);
         }
-        if(isset($requestData['description'])){
-            $artist->setDescription($requestData['description']);
+
+        if (isset($data['fullname'])) {
+            $fullname = $data['fullname'];
+            $artist->setFullname($fullname);
         }
-        if(isset($requestData['fullname'])){
-            $artist->setFullname($requestData['fullname']);
-        }
-        if(isset($requestData['idUser'])){
-            $artist->setUserIdUser($user);
-        }
-   
+
         $this->entityManager->flush();
 
         return $this->json([
-            'message' => 'Artist updated successfully!',
-            'path' => 'src/Controller/ArtistController.php',
+            'message' => 'Les informations de l\'artiste ont été mises à jour avec succès.',
         ]);
     }
 
@@ -135,12 +128,18 @@ class ArtistController extends AbstractController
             ], 404);
         }
 
+        if ($artist->getUser() !== $this->getUser()) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Suppression non autorisée. Vous n\'avez pas les droits requis pour supprimer cet artiste.',
+            ], 403);
+        }
+
         $this->entityManager->remove($artist);
-        $this->entityManager->flush(); 
+        $this->entityManager->flush();
 
         return $this->json([
-            'message' => 'Artist deleted successfully!',
-            'path' => 'src/Controller/ArtistController.php',
+            'message' => 'L\'artiste a été supprimé avec succès.',
         ]);
     }
 }
