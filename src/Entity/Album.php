@@ -172,9 +172,10 @@ class Album
             "nom"=>$this->getNom(),
             "categ"=>$this->getCateg(),
             "cover"=>$this->getCover(),
-            //"createAt"=> $this->getCreateAt()->format('Y-m-d\\TH:i:sP'),
+            "year"=>$this->getYear(),
+            "createAt"=> $this->getCreateAt()->format('Y-m-d\\TH:i:sP'),
             "songs"=>$songs,
-            "user"=> $children ? $this->getArtistUserIdUser() : []
+            //"user"=> $children ? $this->getArtistUserIdUser() : []
         ]);
     }
 }
