@@ -21,21 +21,37 @@ class AlbumRepository extends ServiceEntityRepository
         parent::__construct($registry, Album::class);
     }
 
-    //    /**
-    //     * @return Album[] Returns an array of Album objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('a.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+       /**
+        * @return Album[] Returns an array of Album objects
+        */
+       public function findById($id): array
+       {
+            return $this->createQueryBuilder('al')
+                ->select('al', 'a', 'u', 's')
+                ->leftJoin('al.artist_User_idUser', 'a')
+                ->leftJoin('a.User_idUser', 'u')
+                ->leftJoin('al.song_idSong', 's')
+                ->where('al.active = 1')
+                ->andWhere('al.id = :id')
+                ->setParameter('id', $id)
+                ->getQuery()
+                ->getResult();
+       }
 
+       /**
+        * @return Album[] Returns an array of Album objects
+        */
+        public function findAlbums(): array
+        {
+             return $this->createQueryBuilder('al')
+                 ->select('al', 'a', 'u', 's')
+                 ->leftJoin('al.artist_User_idUser', 'a')
+                 ->leftJoin('a.User_idUser', 'u')
+                 ->leftJoin('al.song_idSong', 's')
+                 ->where('al.active = 1')
+                 ->getQuery()
+                 ->getResult();
+        }
     //    public function findOneBySomeField($value): ?Album
     //    {
     //        return $this->createQueryBuilder('a')
