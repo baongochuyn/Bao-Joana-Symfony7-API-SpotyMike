@@ -60,6 +60,29 @@ class TokenVerifierService {
         return false;
     }
 
+    public function checkTokenWithParam($token){
+        try {
+            $dataToken = $this->jwtProvider->load($token);
+            if($dataToken->isVerified($token)){
+                $user = $this->userRepository->findOneBy(["email" => $dataToken->getPayload()["username"]]);
+                return ($user) ? $user : false;
+            }
+        } catch (\Throwable $th) {
+            return false;
+        }
+    }
+    public function isTokenExpired($token){
+        try{
+            $dataToken = $this->jwtProvider->load($token);
+            $expiration = $dataToken->getPayload(); 
+            return ( $expiration["exp"]  < time()) ? true : false;
+        }
+        catch (\Throwable $th) {
+            return $th;
+        }
+       //dd(date('m/d/Y H:i:s', 1713531003) ,date('m/d/Y H:i:s', $expiration["exp"]), date('m/d/Y H:i:s',time()));
+        return true;
+    }
     public function sendJsonErrorToken($nullToken): Array
     {
         return [
