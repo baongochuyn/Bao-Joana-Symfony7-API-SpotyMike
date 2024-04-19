@@ -36,7 +36,7 @@ class Artist
     private ?\DateTimeInterface$dateEnd = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    private ?\DateTimeInterface$createAt = null;
+    private ?\DateTimeInterface$createdAt = null;
 
     #[ORM\Column(nullable: true)]
     private ?bool $active = null;
@@ -132,12 +132,12 @@ class Artist
 
     public function getCreateAt(): ?\DateTimeInterface
     {
-        return $this->createAt;
+        return $this->createdAt;
     }
 
-    public function setCreateAt(?\DateTimeInterface $createAt): static
+    public function setCreateAt(?\DateTimeInterface $createdAt): static
     {
-        $this->createAt = $createAt;
+        $this->createdAt = $createdAt;
 
         return $this;
     }

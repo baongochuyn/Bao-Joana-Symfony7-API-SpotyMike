@@ -24,6 +24,9 @@ class Album
     #[ORM\Column(length: 20)]
     private ?string $categ = null;
 
+    #[ORM\Column(length: 90)]
+    private ?string $label = null;
+
     #[ORM\Column(length: 125)]
     private ?string $cover = null;
 
@@ -31,7 +34,10 @@ class Album
     private ?int $year = 2024;
 
     #[ORM\Column]
-    private ?\DateTimeImmutable $createAt = null;
+    private ?\DateTimeImmutable $createdAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?bool $active = null;
 
     #[ORM\ManyToOne(inversedBy: 'albums')]
     private ?Artist $artist_User_idUser = null;
@@ -85,6 +91,18 @@ class Album
         return $this;
     }
 
+    public function getLabel(): ?string
+    {
+        return $this->label;
+    }
+
+    public function setLabel(string $label): static
+    {
+        $this->label = $label;
+
+        return $this;
+    }
+
     public function getCover(): ?string
     {
         return $this->cover;
@@ -111,16 +129,28 @@ class Album
 
      public function getCreateAt(): ?\DateTimeInterface
     {
-        return $this->createAt;
+        return $this->createdAt;
     }
 
     public function setCreateAt(?\DateTimeInterface $createAt): static
     {
-        $this->createAt = $createAt;
+        $this->createdAt = $createAt;
 
         return $this;
     }
     
+    public function getActive(): ?bool
+    {
+        return $this->active;
+    }
+
+    public function setActive(?bool $active): static
+    {
+        $this->active = $active;
+
+        return $this;
+    }
+
     public function getArtistUserIdUser(): ?Artist
     {
         return $this->artist_User_idUser;
@@ -163,18 +193,17 @@ class Album
         return $this;
     }
     public function serializer($children = false){
-        $songs = [];
-        foreach ($this->getSongIdSong() as $song) {
-            $songs[] = $song->serializer();
-        }
         return ([
             "id"=>$this->getId(),
             "nom"=>$this->getNom(),
             "categ"=>$this->getCateg(),
+            "label"=>$this->getLabel(),
             "cover"=>$this->getCover(),
-            //"createAt"=> $this->getCreateAt()->format('Y-m-d\\TH:i:sP'),
-            "songs"=>$songs,
-            "user"=> $children ? $this->getArtistUserIdUser() : []
+            "year"=>$this->getYear(),
+            "createAt"=> $this->getCreateAt()->format('Y-m-d\\TH:i:sP'),
+            "songs"=>[],
+            "artist"=>[]
+            //"user"=> $children ? $this->getArtistUserIdUser() : []
         ]);
     }
 }

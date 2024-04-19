@@ -328,14 +328,13 @@ class ArtistController extends AbstractController
     }
 
     #[Route('/artist/{fullname}', name: 'app_get_an_artist', methods:['GET'])]
-    public function GetAnArtist(Request $request,$fullname): JsonResponse
+    public function GetAnArtist(Request $request, $fullname): JsonResponse
     {   
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
             return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
         }
         $user = $dataMiddellware;
-
         if(!$fullname){
             return $this->json([
                 'success'=>true,
