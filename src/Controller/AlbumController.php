@@ -44,7 +44,7 @@ class AlbumController extends AbstractController
         }
             
         $result = $this->repository->findById(['id'=>$id]);
-        $serializedData = [];
+        
         if($result){
             foreach($result as $album){
                 $albumData = $album->serializer();
@@ -62,15 +62,13 @@ class AlbumController extends AbstractController
                     'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d H:i:s'),
                 ];
                 $albumData['artist']= $artistData;
-                
-                $serializedData[] = $albumData;
             }
-        };
-        if($serializedData)
+            if($albumData)
             return $this->json([
                 'error'=>false,
-                'album'=>$serializedData       
+                'album'=>$albumData       
             ]);
+        };
 
         return $this->json([
             'error'=>true,
@@ -78,7 +76,7 @@ class AlbumController extends AbstractController
         ],404);
     }
 
-    #[Route('/album', name: 'app_get_albums', methods:['GET'])]
+    #[Route('/albums', name: 'app_get_albums', methods:['GET'])]
     public function GetAllAlbum(Request $request): JsonResponse
     { 
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
@@ -114,7 +112,7 @@ class AlbumController extends AbstractController
         //dd($requestData['currentPage']);
         if(isset($requestData['currentPage']) && is_numeric($requestData['currentPage']) && intval($requestData['currentPage']) > 0){
             $currentPage = $requestData['currentPage'];
-            $itemsPerPage = 2;
+            $itemsPerPage = isset($requestData['limit']) ? $requestData['limit'] : 5;
             $totalPages = ceil(count($serializedData) / $itemsPerPage);
         }else{
             return $this->json([
