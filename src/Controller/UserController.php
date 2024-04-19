@@ -375,17 +375,43 @@ class UserController extends AbstractController
             $cacheItem->set($currentLogin)->expiresAfter(300);
             $this->cache->save($cacheItem);
         }
+        $currentDateTime = new \DateTime('now', new \DateTimeZone('UTC'));
+        $expiration = clone $currentDateTime;
+        $expiration->modify('+2 minutes');
+        $token = $JWTManager->create($dataUser, ['exp' => $expiration->getTimestamp()]);
         return $this->json([
             'error'=>false,
-            'token'=> $JWTManager->create($dataUser),
+            'token'=> $token,
             'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre address email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe."
         ]);
     }
 
-    #[Route('/reset-password/{token}', name: 'reset-password', methods: ['GET'])]
+    #[Route('/reset-password/{token}', name: 'reset-password', methods: ['POST'])]
     public function resetPassword(Request $request,string $token,UserPasswordHasherInterface $passwordHash): JsonResponse
     {
-        $requestData = $request->query->all();
+         //check token
+         
+         if($token){
+             $dataMiddellware = $this->tokenVerifier->checkTokenWithParam($token);
+             
+             $tokenExpiration = $this->tokenVerifier->isTokenExpired($token);
+             
+            if(gettype($tokenExpiration) == 'boolean' && $tokenExpiration){
+                return $this->json([
+                    'error' => false,
+                    'message' => "Le token de réinitialisation de mot de passe a expiré. Veuillez refaire une demande de réinitialisation de mot de passe."
+                ], 410); 
+            }
+            if(!$dataMiddellware || (gettype($tokenExpiration) == 'boolean' && $tokenExpiration)){
+                return $this->json([
+                    'error'=>false,
+                    'message' => "Token de réinitialisation manquant ou invalide. Veuillez utiliser le lien fourni dans l'email de réinilisation de mot de passe."
+                ],400);
+            }
+         }
+         
+         $user = $dataMiddellware;
+        $requestData = $request->request->all();
         if(!isset($requestData['password'])){
             return $this->json([
                 'error'=>true,
@@ -399,26 +425,8 @@ class UserController extends AbstractController
                 'message'=> "Le nouveau mot de passe ne respecte pas les critère requi.Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",
             ],400);
         }
-        //check token
-        $isCheckedToken = true;
-        if($token){
-            $dataMiddellware = $this->tokenVerifier->checkToken($request);
-            if(gettype($dataMiddellware) == 'boolean'){
-                return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
-            }
-            if(!$dataMiddellware){
-                $isCheckedToken = false;
-            }
-        }else{
-            $isCheckedToken = false;
-        }
-        if(!$isCheckedToken){
-            return $this->json([
-                'error'=>false,
-                'message' => "Token de réinitialisation manquant ou invalide. Veuillez utiliser le lien fourni dans l'email de réinilisation de mot de passe."
-            ],400);
-        }
-        $user = $dataMiddellware;
+        
+        
         $hash = $passwordHash->hashPassword($user, $requestData['password']);
         $user->setPassword($hash);
         $user->setUpdateAt(new \DateTimeImmutable());
