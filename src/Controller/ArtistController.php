@@ -27,7 +27,7 @@ class ArtistController extends AbstractController
         $this->tokenVerifier = $tokenVerifier;
     }
 
-    private function UpdateArtist(Request $request, Artist $artist): JsonResponse
+    private function UpdateArtist(Request $request, Artist $artist, User $user): JsonResponse
     {
         $requestData = $request->request->all();
         if(!$artist){
@@ -38,7 +38,7 @@ class ArtistController extends AbstractController
         }
         $invalide = false;
         if(isset($requestData['label'])){
-            if(preg_match('/[^a-zA-Z0-9_-]/', $requestData['label'] || $requestData['label'] == "" )){
+            if(preg_match('/[!@#$%^&*(),.?":{}|<>]/', $requestData['label']) || $requestData['label'] == "" ){
                 $invalide = true;
             }else{
                 $artist->setLabel($requestData['label']);
@@ -53,7 +53,7 @@ class ArtistController extends AbstractController
                 ],409);
             }
             //check forma ? $invalide = true : false
-             if($requestData['fullname'] == ""){
+             if(strlen($requestData['fullname']) < 1 || strlen($requestData['fullname']) > 30){
                  $invalide = true;
              }
             $artist->setFullname($requestData['fullname']);
@@ -63,6 +63,18 @@ class ArtistController extends AbstractController
             $artist->setDescription($requestData['description']);
         }
 
+        if(isset($requestData['avatar'])){
+            $explodeData = explode(",", $requestData['avatar']);
+            if (count($explodeData) == 2) {
+                $file = base64_decode($explodeData[1]);
+                $imageInfo = getimagesizefromstring($file)['mime'];
+                $parts = explode("/", $imageInfo);
+                $extension = end($parts);
+                $chemin = $this->getParameter('upload_directory') . '/' . $user->getEmail();
+                mkdir($chemin);
+                file_put_contents($chemin . '/avatar.'.$extension, $file);
+            }
+        }
         if($invalide){
             return $this->json([
                 'error'=>true,
@@ -90,7 +102,7 @@ class ArtistController extends AbstractController
 
         $artist = $this->repository->findOneBy(['User_idUser' => $user->getId()]);
         if($artist){
-            return $this->UpdateArtist($request, $artist);
+            return $this->UpdateArtist($request, $artist, $user);
             // return $this->json([
             //     'error'=>true,
             //     'message'=> "Un utilisateur ne peut gérer qu'un seul compte artist. Veuillez supprimer le compte existant pour en créer un nouveau.",
