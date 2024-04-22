@@ -67,9 +67,34 @@ class ArtistController extends AbstractController
             $explodeData = explode(",", $requestData['avatar']);
             if (count($explodeData) == 2) {
                 $file = base64_decode($explodeData[1]);
+                if($file === false){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le serveur ne peut pas décoder le contenue base64 en fichier binaire.",
+                    ],422);
+                }
+
+                $fileSize = strlen($file);
+                $maxFileSize = 7 * 1024 * 1024; // (7MB)
+                $minFileSize = 1 * 1024 * 1024; // (1MB)
+                dd($fileSize, $minFileSize,$maxFileSize );
+                if($fileSize < $minFileSize || $fileSize > $maxFileSize){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.",
+                    ],422);
+                }
+
+
                 $imageInfo = getimagesizefromstring($file)['mime'];
                 $parts = explode("/", $imageInfo);
                 $extension = end($parts);
+                if($extension != "png" || $extension != "jpeg"){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Erreur sur le format du fichier qui n'est pas pris en compte.",
+                    ],422);
+                }
                 $chemin = $this->getParameter('upload_directory') . '/' . $user->getEmail();
                 mkdir($chemin);
                 file_put_contents($chemin . '/avatar.'.$extension, $file);
@@ -116,10 +141,16 @@ class ArtistController extends AbstractController
                 'message'=> "Vous devez au moins 16 ans pour être artiste.",
             ],403);
         }
-        
+
         $artist = new Artist;
-        if(isset($requestData['label']) && isset($requestData['fullname'])){
-            if($requestData['fullname'] == "" ){
+        if(!isset($requestData['label']) && !isset($requestData['fullname'])){
+            return $this->json([
+                'error'=>true,
+                'message'=> "L'id du label et le fullname sont obligatoires.",
+            ],400);
+            
+        }else{
+            if(strlen($requestData['fullname']) < 1 || strlen($requestData['fullname']) > 30){
                 return $this->json([
                     'error'=>true,
                     'message'=> "Le format du fullname est invalide."
@@ -131,7 +162,7 @@ class ArtistController extends AbstractController
                     'message'=> "Ce nom d'artiste a déjà pris. Veuillez en choisir un autre."
                 ],409);
             }
-            if(preg_match('/[^a-zA-Z0-9_-]/', $requestData['label']) || $requestData['label'] == "" ){
+            if(preg_match('/[!@#$%^&*(),.?":{}|<>]/', $requestData['label']) || $requestData['label'] == ""){
                 return $this->json([
                     'error'=>true,
                     'message'=> "Le format de l'id du label est invalide."
@@ -140,6 +171,45 @@ class ArtistController extends AbstractController
             if(isset($requestData['description'])){
                 $artist->setDescription($requestData['description']);
             }
+
+            if(isset($requestData['avatar'])){
+                $explodeData = explode(",", $requestData['avatar']);
+                if (count($explodeData) == 2) {
+                    $file = base64_decode($explodeData[1]);
+                    if($file === false){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Le serveur ne peut pas décoder le contenue base64 en fichier binaire.",
+                        ],422);
+                    }
+    
+                    $tempFilePath = tempnam(sys_get_temp_dir(), 'avatar_');
+                    file_put_contents($tempFilePath, $file);
+                    $fileSize = getimagesize($tempFilePath);
+                    // dd(($fileSize[0]* $fileSize[1]*24)/(1024*1024*8));
+                    $size = ($fileSize[0]* $fileSize[1]*24)/(1024*1024*8);
+                    if($size < 1 || $size > 7){
+                        return $this->json([
+                                    'error'=>true,
+                                    'message'=> "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.",
+                                ],422);
+                    }
+                    //dd("ok");
+                    $imageInfo = getimagesizefromstring($file)['mime'];
+                    $parts = explode("/", $imageInfo);
+                    $extension = end($parts);
+                    if($extension != "png" || $extension != "jpeg"){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Erreur sur le format du fichier qui n'est pas pris en compte.",
+                        ],422);
+                    }
+                    $chemin = $this->getParameter('upload_directory') . '/' . $user->getEmail();
+                    mkdir($chemin);
+                    file_put_contents($chemin . '/avatar.'.$extension, $file);
+                }
+            }
+
             $artist->setLabel($requestData['label']);
             $artist->setFullname($requestData['fullname']);
             $artist->setDateBegin(new DateTimeImmutable());
@@ -156,11 +226,6 @@ class ArtistController extends AbstractController
             ],201);
 
             
-        }else{
-            return $this->json([
-                'error'=>true,
-                'message'=> "L'id du label et le fullname sont obligatoires.",
-            ],400);
         }
     }
 
