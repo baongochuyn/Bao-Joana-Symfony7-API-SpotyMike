@@ -30,12 +30,6 @@ class ArtistController extends AbstractController
     private function UpdateArtist(Request $request, Artist $artist, User $user): JsonResponse
     {
         $requestData = $request->request->all();
-        if(!$artist){
-            return $this->json([
-                'error'=>true,
-                'message'=> "Artiste non trouvé. Veuillez vérifier des informations fournies.",
-            ],404);
-        }
         $invalide = false;
         if(isset($requestData['label'])){
             if(preg_match('/[!@#$%^&*(),.?":{}|<>]/', $requestData['label']) || $requestData['label'] == "" ){
@@ -59,7 +53,6 @@ class ArtistController extends AbstractController
             $artist->setFullname($requestData['fullname']);
         }
         if(isset($requestData['description'])){
-             //check forma ? $invalide = true : false
             $artist->setDescription($requestData['description']);
         }
 
@@ -74,11 +67,11 @@ class ArtistController extends AbstractController
                     ],422);
                 }
 
-                $fileSize = strlen($file);
-                $maxFileSize = 7 * 1024 * 1024; // (7MB)
-                $minFileSize = 1 * 1024 * 1024; // (1MB)
-                dd($fileSize, $minFileSize,$maxFileSize );
-                if($fileSize < $minFileSize || $fileSize > $maxFileSize){
+                $tempFilePath = tempnam(sys_get_temp_dir(), 'avatar_');
+                file_put_contents($tempFilePath, $file);
+                $fileSize = getimagesize($tempFilePath);
+                $size = ($fileSize[0]* $fileSize[1]*24)/(1024*1024*8);
+                if($size < 1 || $size > 7){
                     return $this->json([
                         'error'=>true,
                         'message'=> "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.",
@@ -89,14 +82,18 @@ class ArtistController extends AbstractController
                 $imageInfo = getimagesizefromstring($file)['mime'];
                 $parts = explode("/", $imageInfo);
                 $extension = end($parts);
-                if($extension != "png" || $extension != "jpeg"){
+                if($extension != "png" && $extension != "jpeg"){
                     return $this->json([
                         'error'=>true,
                         'message'=> "Erreur sur le format du fichier qui n'est pas pris en compte.",
                     ],422);
                 }
                 $chemin = $this->getParameter('upload_directory') . '/' . $user->getEmail();
-                mkdir($chemin);
+
+                $oldAvatarPath = $chemin . '/avatar.' . $extension;
+                if(file_exists($oldAvatarPath)){
+                    unlink($oldAvatarPath);
+                }
                 file_put_contents($chemin . '/avatar.'.$extension, $file);
             }
         }
@@ -106,6 +103,7 @@ class ArtistController extends AbstractController
                 'message'=> "Les paramettres fournis sont invalides. Veuillez vérifier des données soumises.",
             ],400);
         }
+
         $this->entityManager->flush();
         return $this->json([
             'success'=>true,
@@ -194,11 +192,10 @@ class ArtistController extends AbstractController
                                     'message'=> "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.",
                                 ],422);
                     }
-                    //dd("ok");
                     $imageInfo = getimagesizefromstring($file)['mime'];
                     $parts = explode("/", $imageInfo);
                     $extension = end($parts);
-                    if($extension != "png" || $extension != "jpeg"){
+                    if($extension != "png" && $extension != "jpeg"){
                         return $this->json([
                             'error'=>true,
                             'message'=> "Erreur sur le format du fichier qui n'est pas pris en compte.",
