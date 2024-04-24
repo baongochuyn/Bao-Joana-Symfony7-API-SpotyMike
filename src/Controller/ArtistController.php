@@ -438,8 +438,6 @@ class ArtistController extends AbstractController
             ],404);
         }
         
-        $serializedData = [];
-        
         $email = $artist->getUserIdUser()->getEmail();
         $chemin = $this->getParameter('upload_directory') . '/' . $email;
         $path = null;
@@ -489,9 +487,7 @@ class ArtistController extends AbstractController
                 'createdAt' => $album->getCreateAt()->format('Y-m-d H:i:s'),
                 'songs' => $songsData
             ];
-        }
-        $serializedData[] = $artistData;
-        
+        }       
 
         return $this->json([
             'error'=>false,
