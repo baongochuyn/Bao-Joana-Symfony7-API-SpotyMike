@@ -234,25 +234,32 @@ class ArtistController extends AbstractController
             return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
         }
 
-        $query = $this->entityManager->createQueryBuilder()
-        // ->select('u.firstname','u.lastname','u.sexe', 'u.dateBirth','a.createAt')
-        // ->from(Artist::class, 'a')
-        // ->leftJoin('a.User_idUser', 'u')
-        // ->where('a.active =1');
+        $result = $this->repository->findArtists();
 
-        ->select('a', 'u', 'al', 's')
-        ->from(Artist::class, 'a')
-        ->leftJoin('a.User_idUser', 'u')
-        ->leftJoin('a.albums', 'al')
-        ->leftJoin('a.songs', 's')
-        ->where('a.active = 1');
-
-        $result = $query->getQuery()->getResult();
         $serializedData = [];
         foreach ($result as $artist) {
+            $email = $artist->getUserIdUser()->getEmail();
+            $chemin = $this->getParameter('upload_directory') . '/' . $email;
+            $path = null;
+            $avatar = null;
+            if (file_exists($chemin.'/avatar.png')){
+                $path = $chemin.'/avatar.png';
+            }
+            if (file_exists($chemin.'/avatar.jpeg')){
+                $path = $chemin.'/avatar.jpeg';
+            }
+
+            if($path != null) {
+                $type = pathinfo($path, PATHINFO_EXTENSION);
+                $data = file_get_contents($path);  
+                $avatar = 'data:image/' . $type . ';base64,' . base64_encode($data);
+            }
+
             $artistData = [
-                'firstname' => $artist->getUserIdUser()->getFirstname(),
+                'firstname' =>  $artist->getUserIdUser()->getFirstname(),
                 'lastname' => $artist->getUserIdUser()->getLastname(),
+                'fullname' => $artist->getFullname(),
+                'avatar' => $avatar,
                 'sexe' => ($artist->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
                 'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
                 'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
@@ -408,7 +415,7 @@ class ArtistController extends AbstractController
         if(gettype($dataMiddellware) == 'boolean'){
             return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
         }
-        $user = $dataMiddellware;
+        
         if(!$fullname){
             return $this->json([
                 'success'=>true,
@@ -423,20 +430,8 @@ class ArtistController extends AbstractController
         }
         
         //get an artist
-            
-        $query = $this->entityManager->createQueryBuilder()
-        ->select('a', 'u', 'al', 's')
-        ->from(Artist::class, 'a')
-        ->leftJoin('a.User_idUser', 'u')
-        ->leftJoin('a.albums', 'al')
-        ->leftJoin('a.songs', 's')
-        ->where('a.active = 1')
-        ->andWhere('a.fullname = :fullname')
-        ->setParameter('fullname', $fullname);
-
-        $result = $query->getQuery()->getResult();
-        //$artist = $this->repository->findOneBy(['fullname' => $fullname]);
-        if(!$result){
+        $artist = $this->repository->findOneByFullname( $fullname);
+        if(!$artist){
             return $this->json([
                 'error'=>true,
                 'message'=> "Aucun artiste trouvé correspondant au nom fourni.",
@@ -444,45 +439,63 @@ class ArtistController extends AbstractController
         }
         
         $serializedData = [];
-        foreach ($result as $artist) {
-           
-            $artistData = [
-                'firstname' => $artist->getUserIdUser()->getFirstname(),
-                'lastname' => $artist->getUserIdUser()->getLastname(),
-                'sexe' => ($artist->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
-                'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
-                'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
-                'albums' => []
-            ];
         
-            foreach ($artist->getAlbums() as $album) {
-                $songsData = [];
-                foreach ($album->getSongIdSong() as $song) {
-                    $songsData[] = [
-                        'id' => $song->getId(),
-                        'title' => $song->getTitle(),
-                        "cover"=>$song->getCover(),
-                        "stream"=>$song->getUrl(),
-                        "createAt"=> $song->getCreateAt()->format('Y-m-d H:i:s')
-                    ];
-                }
-        
-                $artistData['albums'][] = [
-                    'id' => $album->getId(),
-                    'name' => $album->getNom(),
-                    'category' => $album->getCateg(),
-                    'cover' => $album->getCover(),
-                    'year' => $album->getYear(),
-                    'createdAt' => $album->getCreateAt()->format('Y-m-d H:i:s'),
-                    'songs' => $songsData
+        $email = $artist->getUserIdUser()->getEmail();
+        $chemin = $this->getParameter('upload_directory') . '/' . $email;
+        $path = null;
+        $avatar = null;
+        if (file_exists($chemin.'/avatar.png')){
+            $path = $chemin.'/avatar.png';
+        }
+        if (file_exists($chemin.'/avatar.jpeg')){
+            $path = $chemin.'/avatar.jpeg';
+        }
+
+        if($path != null) {
+            $type = pathinfo($path, PATHINFO_EXTENSION);
+            $data = file_get_contents($path);  
+            $avatar = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
+
+        $artistData = [
+            'firstname' => $artist->getUserIdUser()->getFirstname(),
+            'lastname' => $artist->getUserIdUser()->getLastname(),
+            'fullname' => $artist->getFullname(),
+            'avatar' => $avatar,
+            'sexe' => ($artist->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
+            'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
+            'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
+            'albums' => []
+        ];
+    
+        foreach ($artist->getAlbums() as $album) {
+            $songsData = [];
+            foreach ($album->getSongIdSong() as $song) {
+                $songsData[] = [
+                    'id' => $song->getId(),
+                    'title' => $song->getTitle(),
+                    "cover"=>$song->getCover(),
+                    "stream"=>$song->getUrl(),
+                    "createAt"=> $song->getCreateAt()->format('Y-m-d H:i:s')
                 ];
             }
-            $serializedData[] = $artistData;
+    
+            $artistData['albums'][] = [
+                'id' => $album->getId(),
+                'name' => $album->getNom(),
+                'category' => $album->getCateg(),
+                'cover' => $album->getCover(),
+                'year' => $album->getYear(),
+                'createdAt' => $album->getCreateAt()->format('Y-m-d H:i:s'),
+                'songs' => $songsData
+            ];
         }
+        $serializedData[] = $artistData;
+        
 
         return $this->json([
             'error'=>false,
-            'artists'=> $serializedData
+            'artists'=>  $artistData
         ]);
     }
 }
