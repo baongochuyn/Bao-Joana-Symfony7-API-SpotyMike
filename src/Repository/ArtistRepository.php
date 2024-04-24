@@ -21,28 +21,34 @@ class ArtistRepository extends ServiceEntityRepository
         parent::__construct($registry, Artist::class);
     }
 
-    //    /**
-    //     * @return Artist[] Returns an array of Artist objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('a.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+       /**
+        * @return Artist[] Returns an array of Artist objects
+        */
+       public function findArtists(): array
+       {
+           return $this->createQueryBuilder('a')
+                ->select('a', 'u', 'al', 's')
+                ->leftJoin('a.User_idUser', 'u')
+                ->leftJoin('a.albums', 'al')
+                ->leftJoin('a.songs', 's')
+                ->where('a.active = 1')
+                ->getQuery()
+                ->getResult()
+           ;
+       }
 
-    //    public function findOneBySomeField($value): ?Artist
-    //    {
-    //        return $this->createQueryBuilder('a')
-    //            ->andWhere('a.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+       public function findOneByFullname($value): ?Artist
+       {
+           return $this->createQueryBuilder('a')
+                ->select('a', 'u', 'al', 's')
+                ->leftJoin('a.User_idUser', 'u')
+                ->leftJoin('a.albums', 'al')
+                ->leftJoin('a.songs', 's')
+                ->where('a.active = 1')
+                ->andWhere('a.fullname = :fullname')
+                ->setParameter('fullname', $value)
+                ->getQuery()
+                ->getOneOrNullResult()
+           ;
+       }
 }
