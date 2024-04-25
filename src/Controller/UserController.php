@@ -60,6 +60,7 @@ class UserController extends AbstractController
     #[Route('/user/{id}', name: 'app_get_user',methods:['GET'])]
     public function GetUserById(int $id): JsonResponse
     {
+        dd("ok");
         $user = $this->repository->findOneBy(["id" => $id]);
         if (!$user) {
             return $this->json([
@@ -91,6 +92,7 @@ class UserController extends AbstractController
                     'message' => "Des champs obligatoires sont manquants",
                 ], 400);
             } else {
+                $user->setIdUser("User_".rand(0,999999999999));
                 // Validation du firstname
                 $firstname = $requestData['firstname'];
                 if (strlen($firstname) < 1 || strlen($firstname) > 60) {
@@ -161,7 +163,6 @@ class UserController extends AbstractController
                 $user->setCreateAt(new \DateTimeImmutable());
                 $user->setUpdateAt(new \DateTimeImmutable());
             }
-            
             if(isset($requestData['sexe'])){
                 if($requestData['sexe'] == "0" || $requestData['sexe'] == "1"){
                     $user->setSexe($requestData['sexe']);
