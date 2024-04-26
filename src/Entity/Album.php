@@ -39,6 +39,9 @@ class Album
     #[ORM\Column(nullable: true)]
     private ?bool $active = null;
 
+    #[ORM\Column]
+    private ?bool $visibility = true;
+
     #[ORM\ManyToOne(inversedBy: 'albums')]
     private ?Artist $artist_User_idUser = null;
 
@@ -151,6 +154,18 @@ class Album
         return $this;
     }
 
+    public function isVisibility(): ?bool
+    {
+        return $this->visibility;
+    }
+
+    public function setVisibility(bool $visibility): static
+    {
+        $this->visibility = $visibility;
+
+        return $this;
+    }
+    
     public function getArtistUserIdUser(): ?Artist
     {
         return $this->artist_User_idUser;
