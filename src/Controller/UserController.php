@@ -154,8 +154,8 @@ class UserController extends AbstractController
                 if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $requestData['password']) || strlen($requestData['password']) < 8){
                     return $this->json([
                         'error'=>true,
-                        'message'=> "Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",
-                    ],400);
+                        'message'=> "Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum.",
+                    ],403);
                 }
                 $hash = $passwordHash->hashPassword($user, $requestData['password']);
                 $user->setPassword($hash);
@@ -222,16 +222,16 @@ class UserController extends AbstractController
         try{
             if (isset($requestData)) {
                 if(isset($requestData['firstname'])){
-                    if(!preg_match("/^[a-zA-Z\-']+$/", $requestData['firstname'])){
+                    if (strlen($requestData['firstname']) < 1 || strlen($requestData['firstname']) > 60) {
                         return $this->json([
                             'error'=>true,
-                            'message'=> "Le format du nom est invalide",
-                        ],400);
+                            'message'=> "Erreur de validation des données.",
+                        ],422);
                     } 
                     $user->setFirstname($requestData['firstname']);
                 }
                 if(isset($requestData['lastname'])){
-                    if(!preg_match("/^[a-zA-Z\-']+$/", $requestData['lastname'])){
+                    if (strlen($requestData['lastname']) < 1 || strlen($requestData['lastname']) > 60) {
                         return $this->json([
                             'error'=>true,
                             'message'=> "Le format du prénom est invalide",
@@ -245,7 +245,7 @@ class UserController extends AbstractController
                         if($dataUser){
                             return $this->json([
                                 'error'=>true,
-                                'message'=> "Conflit de données. Le numéro de téléphone est déjà utilisé par un autre ",
+                                'message'=> "Conflit de données. Le numéro de téléphone est déjà utilisé par un autre utilisateur.",
                             ],409);
                         }
                         $user->setTel($requestData['tel']);
@@ -290,19 +290,19 @@ class UserController extends AbstractController
         ]);
     }
 
-    #[Route('/account-desactivation', name: 'app_desactive_user', methods: ['DELETE'])]
-    public function desactiveUser(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
+    #[Route('/account-deactivation', name: 'app_desactive_user', methods: ['DELETE'])]
+    public function desactiveUser(Request $request): JsonResponse
     {
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         $user = $dataMiddellware;
         
         if(!$user->getActive()){
             return $this->json([
                 'error' => true,
-                'message' => 'Le compte est déjà désactivé', 
+                'message' => 'Le compte est déjà désactivé.', 
             ],409);
         }
         $user->setActive(false);
@@ -318,7 +318,7 @@ class UserController extends AbstractController
         
         return $this->json([
             'success' => true,
-            'message' => 'Votre compte a été déactivé avec succès. Nous sommes désolés de vous voir partir.',
+            'message' => 'Votre compte a été désactivé avec succès. Nous sommes désolés de vous voir partir.',
         ]);
     }
 
@@ -329,7 +329,7 @@ class UserController extends AbstractController
         if(!isset($requestData['email'])){
             return $this->json([
                 'error'=>true,
-                'message'=> "Email manquant. Veuillez fournir votre email pour la récuppération du mot de passe",
+                'message'=> "Email manquant. Veuillez fournir votre email pour la récupération du mot de passe.",
             ],400);
         }
         if(!filter_var($requestData['email'], FILTER_VALIDATE_EMAIL)){
@@ -342,8 +342,8 @@ class UserController extends AbstractController
         if(!$dataUser){
             return $this->json([
                 'error'=>true,
-                'message'=> "Aucun compte n'est associé à cet email. Veuillez vérifier et réessayer.",
-            ],404);
+                'message'=> "Trop de demandes de réinitialisation de mot de passe ( 3 max ). Veuillez attendre avant de réessayer ( Dans 5 min).",
+            ],);
         }
 
         $userEmail = str_replace('@', '', $requestData['email']);
