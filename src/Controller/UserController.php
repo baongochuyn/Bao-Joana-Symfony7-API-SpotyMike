@@ -291,18 +291,18 @@ class UserController extends AbstractController
     }
 
     #[Route('/account-deactivation', name: 'app_desactive_user', methods: ['DELETE'])]
-    public function desactiveUser(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
+    public function desactiveUser(Request $request): JsonResponse
     {
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         $user = $dataMiddellware;
         
         if(!$user->getActive()){
             return $this->json([
                 'error' => true,
-                'message' => 'Le compte est déjà désactivé', 
+                'message' => 'Le compte est déjà désactivé.', 
             ],409);
         }
         $user->setActive(false);
