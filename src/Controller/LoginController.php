@@ -43,13 +43,13 @@ class LoginController extends AbstractController
         if(!isset($data['Email']) || !isset($data['Password'])){
             return $this->json([
                 'error'=>true,
-                'message'=> "Email/Password manquants",
+                'message'=> "Email/password manquants.",
             ],400);
         }else{       
             if(!filter_var($data['Email'], FILTER_VALIDATE_EMAIL)){
                 return $this->json([
                     'error'=>true,
-                    'message'=> "Le format de l'email est invalide",
+                    'message'=> "Le format de l'email est invalide.",
                 ],400);
             }
             $userEmail = str_replace('@', '', $data['Email']);
@@ -84,8 +84,8 @@ class LoginController extends AbstractController
             if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $data['Password']) || strlen($data['Password']) < 8){
                 return $this->json([
                     'error'=>true,
-                    'message'=> "Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",
-                ],400);
+                    'message'=> "Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum.",
+                ],403);
             }
             $user = $this->repository->findOneBy(["email"=>$data['Email']]);
             if($user){
@@ -108,7 +108,7 @@ class LoginController extends AbstractController
         }
         return $this->json([
             'error'=>true,
-            'message'=> "Email/Password incorrect",
+            'message'=> "Email/password incorrect.",
         ],400);
         
     }
