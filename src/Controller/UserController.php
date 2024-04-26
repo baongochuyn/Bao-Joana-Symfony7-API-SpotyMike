@@ -27,10 +27,10 @@ class UserController extends AbstractController
     private $cache;
     private $artistRepository;
 
-    public function __construct(EntityManagerInterface $entityManager,TokenVerifierService $tokenVerifier)
+    public function __construct(EntityManagerInterface $entityManager, TokenVerifierService $tokenVerifier)
     {
         $this->entityManager = $entityManager;
-        $this->repository =  $entityManager->getRepository(User::class);
+        $this->repository = $entityManager->getRepository(User::class);
         $this->tokenVerifier = $tokenVerifier;
         $this->cache = new FilesystemAdapter();
         $this->artistRepository = $entityManager->getRepository(Artist::class);
@@ -41,13 +41,13 @@ class UserController extends AbstractController
     {
         $users = $this->repository->findAll();
         $resultat = [];
-        try{
-            if(count($users)>0){
-                foreach($users as $user){
-                   array_push($resultat,$user->serializer()) ;
+        try {
+            if (count($users) > 0) {
+                foreach ($users as $user) {
+                    array_push($resultat, $user->serializer());
                 }
             }
-        }catch (Exception $e) {
+        } catch (Exception $e) {
             echo 'Caught exception: ',  $e->getMessage(), "\n";
         }
         return $this->json([
@@ -60,7 +60,8 @@ class UserController extends AbstractController
     #[Route('/user/{id}', name: 'app_get_user',methods:['GET'])]
     public function GetUserById(int $id): JsonResponse
     {
-        $user = $this->repository->findOneBy(["id"=>$id]);
+        dd("ok");
+        $user = $this->repository->findOneBy(["id" => $id]);
         if (!$user) {
             return $this->json([
                 'message' => 'user not found !!! ',
@@ -68,51 +69,50 @@ class UserController extends AbstractController
             ]);
         }
         return $this->json([
-            'user'=>$user->serializer(),
+            'user' => $user->serializer(),
             'message' => 'welcome !!! ',
             'path' => 'src/Controller/UserController.php',
         ]);
     }
 
     #[Route('/register', name: 'app_create_user',methods:['POST'])]
-    public function CreateUser(Request $request,UserPasswordHasherInterface $passwordHash): JsonResponse
+    public function CreateUser(Request $request, UserPasswordHasherInterface $passwordHash): JsonResponse
     {
         $requestData = $request->request->all();
         $user = new User();
-      
-        try{
-            if(!isset($requestData['firstname'])
+
+        try {
+            if (!isset($requestData['firstname'])
                 && !isset($requestData['lastname'])
                 && !isset($requestData['email'])
                 && !isset($requestData['dateBirth'])
-                && !isset($requestData['password']))
-            {
+                && !isset($requestData['password'])) {
                 return $this->json([
-                    'error'=>true,
-                    'message'=> "Des champs obligatoires sont manquantes",
-                ],400);
-            }
-            else
-            {
+                    'error' => true,
+                    'message' => "Des champs obligatoires sont manquants",
+                ], 400);
+            } else {
                 $user->setIdUser("User_".rand(0,999999999999));
-
-                $pattern = "/^[a-zA-Z\-']+$/";
-                if(!preg_match($pattern, $requestData['firstname'])){
+                // Validation du firstname
+                $firstname = $requestData['firstname'];
+                if (strlen($firstname) < 1 || strlen($firstname) > 60) {
                     return $this->json([
-                        'error'=>true,
-                        'message'=> "Le format du prénom est invalide",
-                    ],400);
-                } 
-                $user->setFirstname($requestData['firstname']);
-                
-                if(!preg_match($pattern, $requestData['lastname'])){
-                    return $this->json([
-                        'error'=>true,
-                        'message'=> "Le format du nom est invalide",
-                    ],400);
+                        'error' => true,
+                        'message' => "La longueur du prénom doit être comprise entre 1 et 60 caractères.",
+                    ], 400);
                 }
-                $user->setLastname($requestData['lastname']);
-                
+                $user->setFirstname($firstname);
+
+                // Validation du lastname
+                $lastname = $requestData['lastname'];
+                if (strlen($lastname) < 1 || strlen($lastname) > 60) {
+                    return $this->json([
+                        'error' => true,
+                        'message' => "La longueur du nom doit être comprise entre 1 et 60 caractères.",
+                    ], 400);
+                }
+                $user->setLastname($lastname);
+
                 //check email format
                 if(filter_var($requestData['email'], FILTER_VALIDATE_EMAIL)){
                     $dataUser = $this->repository->findOneBy(["email"=>$requestData['email']]);
@@ -163,7 +163,6 @@ class UserController extends AbstractController
                 $user->setCreateAt(new \DateTimeImmutable());
                 $user->setUpdateAt(new \DateTimeImmutable());
             }
-            
             if(isset($requestData['sexe'])){
                 if($requestData['sexe'] == "0" || $requestData['sexe'] == "1"){
                     $user->setSexe($requestData['sexe']);
