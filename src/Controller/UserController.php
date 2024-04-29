@@ -342,13 +342,13 @@ class UserController extends AbstractController
         if(!$dataUser){
             return $this->json([
                 'error'=>true,
-                'message'=> "Trop de demandes de réinitialisation de mot de passe ( 3 max ). Veuillez attendre avant de réessayer ( Dans 5 min).",
-            ],);
+                'message'=> "Aucun compte n'est associé à cet email. Veuillez vérifier et réessayer.",
+            ],404);
         }
 
         $userEmail = str_replace('@', '', $requestData['email']);
         $userKey  = "password_attempts_$userEmail";
-
+        //dd($this->cache->getItem($userKey)->get());
         if (!$this->cache->hasItem($userKey)) {
             // if not exist, create a new key with value 1
             $loginControl = new RequestControl();
@@ -360,7 +360,7 @@ class UserController extends AbstractController
             $cacheItem = $this->cache->getItem($userKey);
             $currentLogin = $cacheItem->get();
 
-            //dd($this->cache->getItem($userKey)->get());
+            
             if ($currentLogin->number >= 3 && time() - $currentLogin->time < 300) {
                 $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
                 //dd($waitTime);
@@ -379,7 +379,7 @@ class UserController extends AbstractController
         $expiration->modify('+2 minutes');
         $token = $JWTManager->create($dataUser, ['exp' => $expiration->getTimestamp()]);
         return $this->json([
-            'error'=>false,
+            'success'=>true,
             'token'=> $token,
             'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre address email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe."
         ]);
@@ -397,31 +397,31 @@ class UserController extends AbstractController
              
             if(gettype($tokenExpiration) == 'boolean' && $tokenExpiration){
                 return $this->json([
-                    'error' => false,
-                    'message' => "Le token de réinitialisation de mot de passe a expiré. Veuillez refaire une demande de réinitialisation de mot de passe."
+                    'error' => true,
+                    'message' => "Votre token de réinitialisation de mot de passe a expiré. Veuillez refaire une demande de réinitialisation de mot de passe."
                 ], 410); 
             }
             if(!$dataMiddellware || (gettype($tokenExpiration) == 'boolean' && $tokenExpiration)){
                 return $this->json([
-                    'error'=>false,
+                    'error'=>true,
                     'message' => "Token de réinitialisation manquant ou invalide. Veuillez utiliser le lien fourni dans l'email de réinilisation de mot de passe."
                 ],400);
             }
          }
          
-         $user = $dataMiddellware;
-        $requestData = $request->request->all();
+        $user = $dataMiddellware;
+        $requestData = $request->query->all();
         if(!isset($requestData['password'])){
             return $this->json([
                 'error'=>true,
-                'message'=> "Veuillez fournir un nouveau mot de passe",
+                'message'=> "Veuillez fournir un nouveau mot de passe.",
             ],400);
         }
         //check password
         if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $requestData['password']) || strlen($requestData['password']) < 8){
             return $this->json([
                 'error'=>true,
-                'message'=> "Le nouveau mot de passe ne respecte pas les critère requi.Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",
+                'message'=> "Le nouveau mot de passe ne respecte pas les critère requi. Il doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et être composé d'au moins 8 caractères.",
             ],400);
         }
         
@@ -432,8 +432,8 @@ class UserController extends AbstractController
         $this->entityManager->flush();
 
         return $this->json([
-            'error'=>false,
-            'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre address email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe."
-        ]);
+            'success'=>true,
+            'message' => "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe."
+        ],200);
     }
 }
