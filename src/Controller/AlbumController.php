@@ -14,6 +14,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+use function PHPUnit\Framework\assertFalse;
+
 class AlbumController extends AbstractController
 {
 
@@ -22,6 +24,7 @@ class AlbumController extends AbstractController
     private $songRepository;
     private $tokenVerifier;
     private $artistRepository;
+    private $albumRepository;
 
     public function __construct(EntityManagerInterface $entityManager,TokenVerifierService $tokenVerifier)
     {
@@ -29,6 +32,7 @@ class AlbumController extends AbstractController
         $this->repository =  $entityManager->getRepository(Album::class);
         $this->songRepository = $entityManager->getRepository(Song::class);
         $this->artistRepository = $entityManager->getRepository(Artist::class);
+        $this->albumRepository = $entityManager->getRepository(Album::class);
         $this->tokenVerifier = $tokenVerifier;
     }
 
@@ -151,22 +155,27 @@ class AlbumController extends AbstractController
     { 
         $requestData = $request->request->all();
 
+        // check authentication 401
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
             return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
         }
+
+        // check authorization 403. If user is not artist, he has no right.
         $user = $dataMiddellware;
         $artist = $this->artistRepository->findOneBy(['User_idUser'=>$user]);
         if(!$artist){
             return $this->json([
                 'error'=>true,
                 'message'=> "Vous n'avez pas l'authorisation pour accéder à cet album."
-            ],403);        }
+            ],403);        
+        }
 
         $album = new Album;
         $categ = "";
-
-        if(!isset($requestData['visibility']) || !isset($requestData['cover']) || !isset($requestData['title']) || !isset($requestData['categorie']) ){
+        // if not present 4 element, or contain wrong element => 400
+        if(count($requestData) != 4 || !isset($requestData['visibility']) || !isset($requestData['cover']) 
+        || !isset($requestData['title']) || !isset($requestData['categorie'])){
             return $this->json([
                 'error'=>true,
                 'message'=> "Les paramètres fournis sont invalide. Veuillez vérifier les données soumises."
@@ -180,7 +189,7 @@ class AlbumController extends AbstractController
                 ],400);
             }
             $invalide = false;
-
+            
             //check categ
             $categBase = ["rap","r'n'b","gospel","soul","country","hip hop","jazz","le Mike"];
             
@@ -202,7 +211,7 @@ class AlbumController extends AbstractController
             }else{
                 $invalide = true;
             }
-
+           
             //check title
             if(strlen($requestData['title']) < 1 || strlen($requestData['title']) > 90){
                 $invalide = true;
@@ -213,7 +222,8 @@ class AlbumController extends AbstractController
                     'error'=>true,
                     'message'=> "Erreur de validation des données."
                 ],422);
-            }
+            } 
+
             $albumdata = $this->repository->findOneBy(['nom'=>$requestData['title']]);
             if($albumdata){
                 return $this->json([
@@ -221,17 +231,18 @@ class AlbumController extends AbstractController
                     'message'=> "Ce titre est déjà pris. Veuillez en choisir un autre."
                 ],409);
             }
-
+            
             //check cover
             $explodeData = explode(",", $requestData['cover']);
             if (count($explodeData) == 2) {
                 $file = base64_decode($explodeData[1]);
-                if($file === false){
+                if($file == false){
                     return $this->json([
                         'error'=>true,
                         'message'=> "Le serveur ne peut pas décoder le contenue base64 en fichier binaire.",
                     ],422);
                 }
+
                 $imageInfo = getimagesizefromstring($file)['mime'];
                 $parts = explode("/", $imageInfo);
                 $extension = end($parts);
@@ -255,6 +266,12 @@ class AlbumController extends AbstractController
                 //save cover in data
                 $album->setCover($file);
             }
+            else {
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Le serveur ne peut pas décoder le contenue base64 en fichier binaire.",
+                ],422);
+            }
         }
         $datetime = new DateTimeImmutable();
 
@@ -268,12 +285,179 @@ class AlbumController extends AbstractController
         $album->setVisibility(true);
         $album->setArtistUserIdUser($artist);
 
+       // dd($album);
+        $this->entityManager->persist($album);
+        $this->entityManager->flush();
+        return $this->json([
+            'error'=>false,
+            'message'=>"Album créé avec succès.",
+            'id' => $album->getId()
+        ]);
+    }
+
+    #[Route('/album/{id}', name: 'app_update_album', methods:['PUT'])]
+    public function UpdateAlbum(Request $request,$id): JsonResponse
+    { 
+        // 401
+        $dataMiddellware = $this->tokenVerifier->checkToken($request);
+        if(gettype($dataMiddellware) == 'boolean'){
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+        }
+
+        // 403
+        $user = $dataMiddellware;
+        $artist = $this->artistRepository->findOneBy(['User_idUser'=>$user]);
+        if(!$artist){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Vous n'avez pas l'authorisation pour accéder à cet album."
+            ],403);
+        }
+
+        $requestData = $request->request->all();
+        $categ = "";
+        // 404
+        $album = $this->albumRepository->findOneBy(['id'=>$id]);
+        if(!$album){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Aucun album trouvé correspondant au nom fourni."
+            ],404);
+        }
+
+        //dd($requestData);
+        $os = array("visibility", "cover", "categorie", "title");
+        $isCorrectParam = false;
+        foreach ($requestData as $key => $value){
+            if (!in_array($key, $os)){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Les paramètres fournis sont invalide. Veuillez vérifier les données soumises."
+                ],400);
+            }
+            $isCorrectParam = true;
+        };
+
+        if(!$isCorrectParam){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Les paramètres fournis sont invalide. Veuillez vérifier les données soumises."
+            ],400);
+        }else
+        {
+            //check visibility
+            if(isset($requestData['visibility'])){
+                if($requestData['visibility'] != 0 && $requestData['visibility'] != 1){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "La valeur du champ visibility est invalide. Les valeurs autorisées sont 0 pour invisible, 1 pour visible."
+                    ],400);
+                }
+                $album->setVisibility(true);
+            }
+
+            $invalide = false;
+            //check categ
+            if(isset($requestData['categorie'])){
+                $categBase = ["rap","r'n'b","gospel","soul","country","hip hop","jazz","le Mike"];
+            
+                if(strlen($requestData['categorie']) > 0){
+                    foreach (json_decode($requestData['categorie']) as $key => $value) {
+                        if (in_array($value, $categBase)) {
+                            if ($key === count(json_decode($requestData['categorie'])) - 1) { //check if it's the last ele ? without , : with ,
+                                $categ .= $value;
+                            } else {
+                                $categ .= "$value,";
+                            }
+                        } else {
+                            return $this->json([
+                                'error'=>true,
+                                'message'=> "Les catégorie ciblée sont invalide."
+                            ],400);
+                        }
+                    }
+                    $album->setCateg($categ);
+                }else{
+                    $invalide = true;
+                }
+            }
+            
+            //check title
+            if(isset($requestData['title'])){
+                if(strlen($requestData['title']) < 1 || strlen($requestData['title']) > 90){
+                    $invalide = true;
+                } 
+                $albumdata = $this->repository->findOneBy(['nom'=>$requestData['title']]);
+                //dd($albumdata);
+                if($albumdata){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Ce titre est déjà pris. Veuillez en choisir un autre."
+                    ],409);
+                }
+                $album->setNom($requestData['title']);
+            }
+          
+            if($invalide){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Erreur de validation des données."
+                ],422);
+            }
+            
+            //check cover
+            if(isset($requestData['cover'])){
+                $explodeData = explode(",", $requestData['cover']);
+                if (count($explodeData) == 2) {
+                    $file = base64_decode($explodeData[1]);
+                    if($file === false){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Le serveur ne peut pas décoder le contenue base64 en fichier binaire.",
+                        ],422);
+                    }
+                    $imageInfo = getimagesizefromstring($file)['mime'];
+                    $parts = explode("/", $imageInfo);
+                    $extension = end($parts);
+                    if($extension != "png" && $extension != "jpeg"){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Erreur sur le format du fichier qui n'est pas pris en compte.",
+                        ],422);
+                    }
+
+                    $tempFilePath = tempnam(sys_get_temp_dir(), 'cover_');
+                    file_put_contents($tempFilePath, $file);
+                    $fileSize = getimagesize($tempFilePath);
+                    $size = ($fileSize[0]* $fileSize[1]*24)/(1024*1024*8);
+                    if($size < 1 || $size > 7){
+                        return $this->json([
+                                    'error'=>true,
+                                    'message'=> "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.",
+                                ],422);
+                    }
+                    //save cover in data
+                    $album->setCover($file);
+                }
+                else {
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le serveur ne peut pas décoder le contenue base64 en fichier binaire.",
+                    ],422);
+                }
+            }
+        }
+        $datetime = new DateTimeImmutable();
+
+        $album->setActive(true);
+        
+
         //dd($album);
         $this->entityManager->persist($album);
         $this->entityManager->flush();
         return $this->json([
             'error'=>false,
-            'message'=>"Album créé avec succès",
+            'message'=>"Album mis à jour avec succès.",
             'id' => $album->getId()
         ]);
     }
