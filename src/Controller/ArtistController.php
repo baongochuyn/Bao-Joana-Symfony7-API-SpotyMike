@@ -117,9 +117,10 @@ class ArtistController extends AbstractController
     {
         $requestData = $request->request->all();
 
+        // 401 not authen
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         $user = $dataMiddellware;
 
@@ -136,12 +137,12 @@ class ArtistController extends AbstractController
         if($age < 16){
             return $this->json([
                 'error'=>true,
-                'message'=> "Vous devez au moins 16 ans pour être artiste.",
+                'message'=> "Vous devez avoir au moins 16 ans pour être artiste.",
             ],403);
         }
 
         $artist = new Artist;
-        if(!isset($requestData['label']) && !isset($requestData['fullname'])){
+        if(!isset($requestData['label']) || !isset($requestData['fullname'])){
             return $this->json([
                 'error'=>true,
                 'message'=> "L'id du label et le fullname sont obligatoires.",
@@ -231,7 +232,7 @@ class ArtistController extends AbstractController
     {
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
 
         $result = $this->repository->findArtists();
@@ -384,7 +385,7 @@ class ArtistController extends AbstractController
     {
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         $user = $dataMiddellware;
         $artist = $this->repository->findOneBy(['User_idUser' => $user->getId()]);
@@ -397,7 +398,7 @@ class ArtistController extends AbstractController
         if(!$artist->getActive()){
             return $this->json([
                 'error'=>true,
-                'message'=> "Le compte artiste est déjà déactivé.",
+                'message'=> "Le compte artiste est déjà déactivé avec succès.",
             ],410);
         }
         $artist->setActive(false);
@@ -413,7 +414,7 @@ class ArtistController extends AbstractController
     {   
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         
         if(!$fullname){

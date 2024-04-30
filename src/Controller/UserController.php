@@ -134,7 +134,10 @@ class UserController extends AbstractController
                 $d = \DateTime::createFromFormat('d/m/Y',$requestData['dateBirth']);
                 //dd($d->format('d/m/Y') ==  $requestData['dateBirth']);
                 if($d && ($d->format('d/m/Y') ==  $requestData['dateBirth'])){
-                    $diff = date_diff(date_create($requestData['dateBirth']), date_create(date("Y-m-d")));
+                    
+                    $diff = date_diff(date_create_from_format('d/m/Y',$requestData['dateBirth']), 
+                    date_create_from_format('d/m/Y', date("d/m/Y")));
+                    dd($diff->format('%y'));
                     if($diff->format('%y') > 12){
                         $user->setDateBirth(new \DateTimeImmutable($requestData['dateBirth']));
                     }else{
@@ -212,13 +215,25 @@ class UserController extends AbstractController
     #[Route('/user', name: 'app_update_user',methods:['POST'])]
     public function UpdateUser(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
     {
-        $requestData = $request->request->all();
+        // check authen 401
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
+
         $user = $dataMiddellware;
-        
+        $requestData = $request->request->all();
+
+        $arrParam = array("firstname", "lastname", "tel", "sexe");
+        foreach ($requestData as $key => $value){
+            if (!in_array($key, $arrParam)){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Les données fournies sont invalides ou incomplètes."
+                ],400);
+            }
+        };
+
         try{
             if (isset($requestData)) {
                 if(isset($requestData['firstname'])){
