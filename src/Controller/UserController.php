@@ -134,7 +134,9 @@ class UserController extends AbstractController
                 $d = \DateTime::createFromFormat('d/m/Y',$requestData['dateBirth']);
                 //dd($d->format('d/m/Y') ==  $requestData['dateBirth']);
                 if($d && ($d->format('d/m/Y') ==  $requestData['dateBirth'])){
-                    $diff = date_diff(date_create($requestData['dateBirth']), date_create(date("Y-m-d")));
+                    
+                    $diff = date_diff(date_create_from_format('d/m/Y',$requestData['dateBirth']), 
+                    date_create_from_format('d/m/Y', date("d/m/Y")));
                     if($diff->format('%y') > 12){
                         $user->setDateBirth(new \DateTimeImmutable($requestData['dateBirth']));
                     }else{
@@ -212,13 +214,31 @@ class UserController extends AbstractController
     #[Route('/user', name: 'app_update_user',methods:['POST'])]
     public function UpdateUser(Request $request, JWTTokenManagerInterface $JWTManager): JsonResponse
     {
-        $requestData = $request->request->all();
+        // check authen 401
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
+
         $user = $dataMiddellware;
-        
+        $requestData = $request->request->all();
+
+        if(count($requestData) <= 0){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Les données fournies sont invalides ou incomplètes."
+            ],400);
+        }
+        $arrParam = array("firstname", "lastname", "tel", "sexe");
+        foreach ($requestData as $key => $value){
+            if (!in_array($key, $arrParam)){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Les données fournies sont invalides ou incomplètes."
+                ],400);
+            }
+        };
+
         try{
             if (isset($requestData)) {
                 if(isset($requestData['firstname'])){
@@ -280,14 +300,9 @@ class UserController extends AbstractController
             return $this->json([
                 'error'=>true,
                 'message'=> $e,
-                'message'=> "Les données fournies sont invalides ou incomplètes"
+                'message'=> "Les données fournies sont invalides ou incomplètes."
             ],409);
         }
-        
-        return $this->json([
-            'message' => 'cannot update !!! ',
-            'path' => 'src/Controller/UserController.php',
-        ]);
     }
 
     #[Route('/account-deactivation', name: 'app_desactive_user', methods: ['DELETE'])]
@@ -342,13 +357,13 @@ class UserController extends AbstractController
         if(!$dataUser){
             return $this->json([
                 'error'=>true,
-                'message'=> "Trop de demandes de réinitialisation de mot de passe ( 3 max ). Veuillez attendre avant de réessayer ( Dans 5 min).",
-            ],);
+                'message'=> "Aucun compte n'est associé à cet email. Veuillez vérifier et réessayer.",
+            ],404);
         }
 
         $userEmail = str_replace('@', '', $requestData['email']);
         $userKey  = "password_attempts_$userEmail";
-
+        //dd($this->cache->getItem($userKey)->get());
         if (!$this->cache->hasItem($userKey)) {
             // if not exist, create a new key with value 1
             $loginControl = new RequestControl();
@@ -360,7 +375,7 @@ class UserController extends AbstractController
             $cacheItem = $this->cache->getItem($userKey);
             $currentLogin = $cacheItem->get();
 
-            //dd($this->cache->getItem($userKey)->get());
+            
             if ($currentLogin->number >= 3 && time() - $currentLogin->time < 300) {
                 $waitTime = ceil((300 - (time() - $currentLogin->time)) / 60);
                 //dd($waitTime);
@@ -379,7 +394,7 @@ class UserController extends AbstractController
         $expiration->modify('+2 minutes');
         $token = $JWTManager->create($dataUser, ['exp' => $expiration->getTimestamp()]);
         return $this->json([
-            'error'=>false,
+            'success'=>true,
             'token'=> $token,
             'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre address email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe."
         ]);
@@ -397,31 +412,31 @@ class UserController extends AbstractController
              
             if(gettype($tokenExpiration) == 'boolean' && $tokenExpiration){
                 return $this->json([
-                    'error' => false,
-                    'message' => "Le token de réinitialisation de mot de passe a expiré. Veuillez refaire une demande de réinitialisation de mot de passe."
+                    'error' => true,
+                    'message' => "Votre token de réinitialisation de mot de passe a expiré. Veuillez refaire une demande de réinitialisation de mot de passe."
                 ], 410); 
             }
             if(!$dataMiddellware || (gettype($tokenExpiration) == 'boolean' && $tokenExpiration)){
                 return $this->json([
-                    'error'=>false,
+                    'error'=>true,
                     'message' => "Token de réinitialisation manquant ou invalide. Veuillez utiliser le lien fourni dans l'email de réinilisation de mot de passe."
                 ],400);
             }
          }
          
-         $user = $dataMiddellware;
-        $requestData = $request->request->all();
+        $user = $dataMiddellware;
+        $requestData = $request->query->all();
         if(!isset($requestData['password'])){
             return $this->json([
                 'error'=>true,
-                'message'=> "Veuillez fournir un nouveau mot de passe",
+                'message'=> "Veuillez fournir un nouveau mot de passe.",
             ],400);
         }
         //check password
         if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W)(?!\s).{8,16}$/", $requestData['password']) || strlen($requestData['password']) < 8){
             return $this->json([
                 'error'=>true,
-                'message'=> "Le nouveau mot de passe ne respecte pas les critère requi.Le mot de pass doit contenir au moins une minuscule, un chiffre, un caractère spécial et avoir 8 caractères minimum",
+                'message'=> "Le nouveau mot de passe ne respecte pas les critère requi. Il doit contenir au moins une majuscule, une minuscule, un chiffre, un caractère spécial et être composé d'au moins 8 caractères.",
             ],400);
         }
         
@@ -432,8 +447,8 @@ class UserController extends AbstractController
         $this->entityManager->flush();
 
         return $this->json([
-            'error'=>false,
-            'message' => "Un email de réinitialisation de mot de passe a été envoyé à votre address email. Veuillez suivre les instructions contenues dans l'email pour réinitialiser votre mot de passe."
-        ]);
+            'success'=>true,
+            'message' => "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe."
+        ],200);
     }
 }

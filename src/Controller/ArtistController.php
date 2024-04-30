@@ -6,6 +6,7 @@ use App\Entity\Artist;
 use App\Entity\User;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PhpParser\Builder\Method;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -31,85 +32,108 @@ class ArtistController extends AbstractController
     {
         $requestData = $request->request->all();
         $invalide = false;
-        if(isset($requestData['label'])){
-            if(preg_match('/[!@#$%^&*(),.?":{}|<>]/', $requestData['label']) || $requestData['label'] == "" ){
-                $invalide = true;
-            }else{
-                $artist->setLabel($requestData['label']);
-                $artist->setDateBegin(new DateTimeImmutable());
-            }
-        }
-        if(isset($requestData['fullname'])){
-            if($this->repository->findOneBy(['fullname'=>$requestData['fullname']])){
-                return $this->json([
-                    'error'=>true,
-                    'message'=> "Le nom d'artiste est déjà utilisé. Veuillez choisir un autre nom.",
-                ],409);
-            }
-            //check forma ? $invalide = true : false
-             if(strlen($requestData['fullname']) < 1 || strlen($requestData['fullname']) > 30){
-                 $invalide = true;
-             }
-            $artist->setFullname($requestData['fullname']);
-        }
-        if(isset($requestData['description'])){
-            $artist->setDescription($requestData['description']);
-        }
 
-        if(isset($requestData['avatar'])){
-            $explodeData = explode(",", $requestData['avatar']);
-            if (count($explodeData) == 2) {
-                $file = base64_decode($explodeData[1]);
-                if($file === false){
-                    return $this->json([
-                        'error'=>true,
-                        'message'=> "Le serveur ne peut pas décoder le contenue base64 en fichier binaire.",
-                    ],422);
-                }
-
-                $tempFilePath = tempnam(sys_get_temp_dir(), 'avatar_');
-                file_put_contents($tempFilePath, $file);
-                $fileSize = getimagesize($tempFilePath);
-                $size = ($fileSize[0]* $fileSize[1]*24)/(1024*1024*8);
-                if($size < 1 || $size > 7){
-                    return $this->json([
-                        'error'=>true,
-                        'message'=> "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.",
-                    ],422);
-                }
-
-
-                $imageInfo = getimagesizefromstring($file)['mime'];
-                $parts = explode("/", $imageInfo);
-                $extension = end($parts);
-                if($extension != "png" && $extension != "jpeg"){
-                    return $this->json([
-                        'error'=>true,
-                        'message'=> "Erreur sur le format du fichier qui n'est pas pris en compte.",
-                    ],422);
-                }
-                $chemin = $this->getParameter('upload_directory') . '/' . $user->getEmail();
-
-                $oldAvatarPath = $chemin . '/avatar.' . $extension;
-                if(file_exists($oldAvatarPath)){
-                    unlink($oldAvatarPath);
-                }
-                file_put_contents($chemin . '/avatar.'.$extension, $file);
-            }
-        }
-        if($invalide){
+        if(count($requestData) <= 0){
             return $this->json([
                 'error'=>true,
-                'message'=> "Les paramettres fournis sont invalides. Veuillez vérifier des données soumises.",
+                'message'=> "Les paramètres fournies sont invalides. Veuillez vérifier les données soumises."
             ],400);
         }
+        $arrParam = array("label", "fullname", "description", "avatar");
+        foreach ($requestData as $key => $value){
+            if (!in_array($key, $arrParam)){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Les paramètres fournies sont invalides. Veuillez vérifier les données soumises."
+                ],400);
+            }
+        };
 
-        $this->entityManager->flush();
+        try{          
+            if(isset($requestData['label'])){
+                if(preg_match('/[!@#$%^&*(),.?":{}|<>]/', $requestData['label']) || $requestData['label'] == "" ){
+                    $invalide = true;
+                }else{
+                    $artist->setLabel($requestData['label']);
+                    $artist->setDateBegin(new DateTimeImmutable());
+                }
+            }
+            if(isset($requestData['fullname'])){
+                if($this->repository->findOneBy(['fullname'=>$requestData['fullname']])){
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Le nom d'artiste est déjà utilisé. Veuillez choisir un autre nom.",
+                    ],409);
+                }
+                //check forma ? $invalide = true : false
+                    if(strlen($requestData['fullname']) < 1 || strlen($requestData['fullname']) > 30){
+                        $invalide = true;
+                    }
+                $artist->setFullname($requestData['fullname']);
+            }
+            if(isset($requestData['description'])){
+                $artist->setDescription($requestData['description']);
+            }
+    
+            if(isset($requestData['avatar'])){
+                $explodeData = explode(",", $requestData['avatar']);
+                if (count($explodeData) == 2) {
+                    $file = base64_decode($explodeData[1]);
+                    if($file === false){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Le serveur ne peut pas décoder le contenue base64 en fichier binaire.",
+                        ],422);
+                    }
+    
+                    $tempFilePath = tempnam(sys_get_temp_dir(), 'avatar_');
+                    file_put_contents($tempFilePath, $file);
+                    $fileSize = getimagesize($tempFilePath);
+                    $size = ($fileSize[0]* $fileSize[1]*24)/(1024*1024*8);
+                    if($size < 1 || $size > 7){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Le fichier envoyé est trop ou pas assez volumineux. Vous devez respecter la taille entre 1Mb et 7Mb.",
+                        ],422);
+                    }
+    
+    
+                    $imageInfo = getimagesizefromstring($file)['mime'];
+                    $parts = explode("/", $imageInfo);
+                    $extension = end($parts);
+                    if($extension != "png" && $extension != "jpeg"){
+                        return $this->json([
+                            'error'=>true,
+                            'message'=> "Erreur sur le format du fichier qui n'est pas pris en compte.",
+                        ],422);
+                    }
+                    $chemin = $this->getParameter('upload_directory') . '/' . $user->getEmail();
+    
+                    $oldAvatarPath = $chemin . '/avatar.' . $extension;
+                    if(file_exists($oldAvatarPath)){
+                        unlink($oldAvatarPath);
+                    }
+                    file_put_contents($chemin . '/avatar.'.$extension, $file);
+                }
+            }
+            if($invalide){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Les paramettres fournis sont invalides. Veuillez vérifier des données soumises.",
+                ],400);
+            }
+            $this->entityManager->flush();  
+        }catch (Exception $e) {
+            return $this->json([
+                'error'=>true,
+                'message'=> $e,
+                'message'=> "Les données fournies sont invalides ou incomplètes."
+            ],409);
+        }
         return $this->json([
             'success'=>true,
             'message'=> "Les informations de l'artiste ont été mises à jour avec succès."
         ],201);
-
     }
 
     #[Route('/artist', name: 'app_create_artist', methods:['POST'])]
@@ -117,9 +141,10 @@ class ArtistController extends AbstractController
     {
         $requestData = $request->request->all();
 
+        // 401 not authen
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         $user = $dataMiddellware;
 
@@ -136,12 +161,12 @@ class ArtistController extends AbstractController
         if($age < 16){
             return $this->json([
                 'error'=>true,
-                'message'=> "Vous devez au moins 16 ans pour être artiste.",
+                'message'=> "Vous devez avoir au moins 16 ans pour être artiste.",
             ],403);
         }
 
         $artist = new Artist;
-        if(!isset($requestData['label']) && !isset($requestData['fullname'])){
+        if(!isset($requestData['label']) || !isset($requestData['fullname'])){
             return $this->json([
                 'error'=>true,
                 'message'=> "L'id du label et le fullname sont obligatoires.",
@@ -231,7 +256,7 @@ class ArtistController extends AbstractController
     {
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
 
         $result = $this->repository->findArtists();
@@ -262,7 +287,7 @@ class ArtistController extends AbstractController
                 'avatar' => $avatar,
                 'sexe' => ($artist->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
                 'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
-                'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
+                'createdAt' => $artist->getCreateAt()->format('Y-m-d'),
                 'albums' => []
             ];
         
@@ -274,17 +299,18 @@ class ArtistController extends AbstractController
                         'title' => $song->getTitle(),
                         "cover"=>$song->getCover(),
                         "stream"=>$song->getUrl(),
-                        "createAt"=> $song->getCreateAt()->format('Y-m-d H:i:s')
+                        "createAt"=> $song->getCreateAt()->format('Y-m-d')
                     ];
                 }
         
                 $artistData['albums'][] = [
                     'id' => $album->getId(),
-                    'name' => $album->getNom(),
-                    'category' => $album->getCateg(),
+                    'nom' => $album->getNom(),
+                    'categ' => $album->getCateg(),
+                    'label' => $album->getLabel(),
                     'cover' => $album->getCover(),
                     'year' => $album->getYear(),
-                    'createdAt' => $album->getCreateAt()->format('Y-m-d H:i:s'),
+                    'createdAt' => $album->getCreateAt()->format('Y-m-d'),
                     'songs' => $songsData
                 ];
             }
@@ -293,8 +319,22 @@ class ArtistController extends AbstractController
         //dd($serializedArtists);
         
         $requestData = $request->query->all();
-        $currentPage = isset($requestData['currentPage']) ? $requestData['currentPage'] : 1;
-        $itemsPerPage = 2;
+        if(!isset($requestData['currentPage']) || !filter_var($requestData['currentPage'], FILTER_VALIDATE_INT) 
+        || filter_var($requestData['currentPage'], FILTER_VALIDATE_INT) <= 0 ){
+            return $this->json([
+                'error' => true,
+                'message' => 'Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide.'
+            ], 400);
+        }
+        if(isset($requestData['limit']) && (!filter_var($requestData['limit'], FILTER_VALIDATE_INT) 
+        || filter_var($requestData['limit'], FILTER_VALIDATE_INT) <= 0 )){
+            return $this->json([
+                'error' => true,
+                'message' => 'Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide.'
+            ], 400);
+        }
+        $currentPage = filter_var($requestData['currentPage'], FILTER_VALIDATE_INT);
+        $itemsPerPage = isset($requestData['limit']) ? filter_var($requestData['limit'], FILTER_VALIDATE_INT) : 5;
         $totalPages = ceil(count($serializedData) / $itemsPerPage);
 
         if ($currentPage > $totalPages) {
@@ -382,9 +422,10 @@ class ArtistController extends AbstractController
     #[Route('/artist', name: 'app_artist', methods:['DELETE'])]
     public function DeleteArtist(Request $request): JsonResponse
     {
+        //401, not authen
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         $user = $dataMiddellware;
         $artist = $this->repository->findOneBy(['User_idUser' => $user->getId()]);
@@ -397,7 +438,7 @@ class ArtistController extends AbstractController
         if(!$artist->getActive()){
             return $this->json([
                 'error'=>true,
-                'message'=> "Le compte artiste est déjà déactivé.",
+                'message'=> "Le compte artiste est déjà déactivé avec succès.",
             ],410);
         }
         $artist->setActive(false);
@@ -413,7 +454,7 @@ class ArtistController extends AbstractController
     {   
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         
         if(!$fullname){
@@ -462,7 +503,7 @@ class ArtistController extends AbstractController
             'avatar' => $avatar,
             'sexe' => ($artist->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
             'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
-            'createdAt' => $artist->getCreateAt()->format('Y-m-d H:i:s'),
+            'createdAt' => $artist->getCreateAt()->format('Y-m-d'),
             'albums' => []
         ];
     
@@ -474,17 +515,17 @@ class ArtistController extends AbstractController
                     'title' => $song->getTitle(),
                     "cover"=>$song->getCover(),
                     "stream"=>$song->getUrl(),
-                    "createAt"=> $song->getCreateAt()->format('Y-m-d H:i:s')
+                    "createAt"=> $song->getCreateAt()->format('Y-m-d')
                 ];
             }
     
             $artistData['albums'][] = [
                 'id' => $album->getId(),
-                'name' => $album->getNom(),
+                'nom' => $album->getNom(),
                 'category' => $album->getCateg(),
                 'cover' => $album->getCover(),
                 'year' => $album->getYear(),
-                'createdAt' => $album->getCreateAt()->format('Y-m-d H:i:s'),
+                'createdAt' => $album->getCreateAt()->format('Y-m-d'),
                 'songs' => $songsData
             ];
         }       

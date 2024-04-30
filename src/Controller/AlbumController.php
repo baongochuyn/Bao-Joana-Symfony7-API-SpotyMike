@@ -42,7 +42,7 @@ class AlbumController extends AbstractController
     { 
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         if(!isset($id)){
             return $this->json([
@@ -89,7 +89,7 @@ class AlbumController extends AbstractController
     { 
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
         
         $result = $this->repository->findAlbums();
@@ -158,7 +158,7 @@ class AlbumController extends AbstractController
         // check authentication 401
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
 
         // check authorization 403. If user is not artist, he has no right.
@@ -301,7 +301,7 @@ class AlbumController extends AbstractController
         // 401
         $dataMiddellware = $this->tokenVerifier->checkToken($request);
         if(gettype($dataMiddellware) == 'boolean'){
-            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware));
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
         }
 
         // 403
@@ -326,13 +326,13 @@ class AlbumController extends AbstractController
         }
 
         //dd($requestData);
-        $os = array("visibility", "cover", "categorie", "title");
+        $arrCat = array("visibility", "cover", "categorie", "title");
         $isCorrectParam = false;
         foreach ($requestData as $key => $value){
-            if (!in_array($key, $os)){
+            if (!in_array($key, $arrCat)){
                 return $this->json([
                     'error'=>true,
-                    'message'=> "Les paramètres fournis sont invalide. Veuillez vérifier les données soumises."
+                    'message'=> "Les paramètres fournis sont invalides. Veuillez vérifier les données soumises."
                 ],400);
             }
             $isCorrectParam = true;
@@ -447,12 +447,50 @@ class AlbumController extends AbstractController
                 }
             }
         }
-        $datetime = new DateTimeImmutable();
-
         $album->setActive(true);
         
+        $this->entityManager->persist($album);
+        $this->entityManager->flush();
+        return $this->json([
+            'error'=>false,
+            'message'=>"Album mis à jour avec succès.",
+            'id' => $album->getId()
+        ]);
+    }
 
-        //dd($album);
+    #[Route('/album/{id}/song', name: 'app_update_album_song', methods:['POST'])]
+    public function UpdateSongAlbum(Request $request,$id): JsonResponse
+    { 
+        // 401
+        $dataMiddellware = $this->tokenVerifier->checkToken($request);
+        if(gettype($dataMiddellware) == 'boolean'){
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
+        }
+
+        // 403
+        $user = $dataMiddellware;
+        $artist = $this->artistRepository->findOneBy(['User_idUser'=>$user]);
+        if(!$artist){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Vous n'avez pas l'authorisation pour accéder à cet album."
+            ],403);
+        }
+
+        // 404
+        $album = $this->albumRepository->findOneBy(['id'=>$id]);
+        if(!$album){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Aucun album trouvé correspondant au nom fourni."
+            ],404);
+        }
+
+        $requestData = $request->request->all();
+
+        $song = new Song();
+        $album->addSongIdSong($song);
+        
         $this->entityManager->persist($album);
         $this->entityManager->flush();
         return $this->json([
