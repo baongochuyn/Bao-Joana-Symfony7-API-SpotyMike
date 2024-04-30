@@ -137,7 +137,6 @@ class UserController extends AbstractController
                     
                     $diff = date_diff(date_create_from_format('d/m/Y',$requestData['dateBirth']), 
                     date_create_from_format('d/m/Y', date("d/m/Y")));
-                    dd($diff->format('%y'));
                     if($diff->format('%y') > 12){
                         $user->setDateBirth(new \DateTimeImmutable($requestData['dateBirth']));
                     }else{
@@ -224,6 +223,12 @@ class UserController extends AbstractController
         $user = $dataMiddellware;
         $requestData = $request->request->all();
 
+        if(count($requestData) <= 0){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Les données fournies sont invalides ou incomplètes."
+            ],400);
+        }
         $arrParam = array("firstname", "lastname", "tel", "sexe");
         foreach ($requestData as $key => $value){
             if (!in_array($key, $arrParam)){
@@ -295,14 +300,9 @@ class UserController extends AbstractController
             return $this->json([
                 'error'=>true,
                 'message'=> $e,
-                'message'=> "Les données fournies sont invalides ou incomplètes"
+                'message'=> "Les données fournies sont invalides ou incomplètes."
             ],409);
         }
-        
-        return $this->json([
-            'message' => 'cannot update !!! ',
-            'path' => 'src/Controller/UserController.php',
-        ]);
     }
 
     #[Route('/account-deactivation', name: 'app_desactive_user', methods: ['DELETE'])]
