@@ -229,6 +229,7 @@ class UserController extends AbstractController
                 'message'=> "Les données fournies sont invalides ou incomplètes."
             ],400);
         }
+        
         $arrParam = array("firstname", "lastname", "tel", "sexe");
         foreach ($requestData as $key => $value){
             if (!in_array($key, $arrParam)){
