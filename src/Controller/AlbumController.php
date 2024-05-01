@@ -67,7 +67,7 @@ class AlbumController extends AbstractController
                     'lastname' => $album->getArtistUserIdUser()->getUserIdUser()->getLastname(),
                     'sexe' => ($album->getArtistUserIdUser()->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
                     'dateBirth' => $album->getArtistUserIdUser()->getUserIdUser()->getDateBirth()->format('d-m-Y'),
-                    'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d H:i:s'),
+                    'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d'),
                 ];
                 $albumData['artist']= $artistData;
             }
@@ -108,7 +108,7 @@ class AlbumController extends AbstractController
                     'lastname' => $album->getArtistUserIdUser()->getUserIdUser()->getLastname(),
                     'sexe' => ($album->getArtistUserIdUser()->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
                     'dateBirth' => $album->getArtistUserIdUser()->getUserIdUser()->getDateBirth()->format('d-m-Y'),
-                    'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d H:i:s'),
+                    'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d'),
                 ];
                 $albumData['artist']= $artistData;
                 
@@ -117,10 +117,22 @@ class AlbumController extends AbstractController
         };
         $requestData = $request->query->all();
         $currentPage =1;
+        $totalPages = 1;
         //dd($requestData['currentPage']);
         if(isset($requestData['currentPage']) && is_numeric($requestData['currentPage']) && intval($requestData['currentPage']) > 0){
             $currentPage = $requestData['currentPage'];
-            $itemsPerPage = isset($requestData['limit']) ? $requestData['limit'] : 5;
+            $itemsPerPage  = 5;
+            if (isset($requestData['limit'])){
+                if (is_numeric($requestData['currentPage']) && intval($requestData['currentPage']) > 0){
+                    $itemsPerPage = $requestData['limit'];
+                }
+                else{
+                    return $this->json([
+                        'error'=>true,
+                        'message'=>"Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide."          
+                    ],400);
+                }
+            }
             $totalPages = ceil(count($serializedData) / $itemsPerPage);
         }else{
             return $this->json([
@@ -140,7 +152,185 @@ class AlbumController extends AbstractController
         $pagination = [
         'currentPage' => (int)($currentPage),
         'totalPage' => $totalPages,
-        'totalArtist' => count($serializedData)
+        'totalAlbums' => count($serializedData)
+        ];
+
+        return $this->json([
+            'error'=>false,
+            'albums'=> $dataForCurrentPage,
+            'pagination'=> $pagination
+        ]);
+    }
+
+    #[Route('/albums/search', name: 'app_search_albums', methods:['GET'])]
+    public function SearchAlbum(Request $request): JsonResponse
+    { 
+        // 401
+        $dataMiddellware = $this->tokenVerifier->checkToken($request);
+        if(gettype($dataMiddellware) == 'boolean'){
+            return $this->json($this->tokenVerifier->sendJsonErrorToken($dataMiddellware),401);
+        }
+        
+        $requestData = $request->query->all();
+        if(count($requestData) <= 0){
+            return $this->json([
+                'error'=>true,
+                'message'=> "Les paramètres fournis sont invalides. Veuillez vérifier les données soumises."
+            ],400);
+        }
+
+        //typo issue from plan final labe -> label.
+        $arrParam = array("nom", "fullname", "labe", "year", "featuring", "category", "limit");
+        foreach ($requestData as $key => $value){
+            if (!in_array($key, $arrParam)){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Les paramètres fournis sont invalides. Veuillez vérifier les données soumises."
+                ],400);
+            }
+        };
+
+        //check categ
+        $categBase = ["rap","r'n'b","gospel","soul","country","hip hop","jazz","le Mike"];
+        $categ = "";
+        if (isset($requestData['category'])){
+            $arrayCat = json_decode($requestData['category']);
+            if(!$arrayCat || strlen($requestData['category']) <= 0 ){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Les catégorie ciblée sont invalide."
+                ],400);
+            }
+            
+            foreach ($arrayCat as $key => $value) {
+                if (in_array($value, $categBase)) {
+                    if ($key === count($arrayCat ) - 1) { //check if it's the last ele ? without , : with ,
+                        $categ .= $value;
+                    } else {
+                        $categ .= "$value,";
+                    }
+                } else {
+                    return $this->json([
+                        'error'=>true,
+                        'message'=> "Les catégorie ciblée sont invalide."
+                    ],400);
+                }
+            }
+        }
+
+        $featuringList = null;
+        if(isset($requestData['featuring'])){
+            $featuringList = json_decode($requestData['featuring']);
+            if (!$featuringList || !is_array($featuringList)){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "Les featuring ciblée sont invalide."
+                ],400);
+            }
+        }
+
+        $year = -1;
+        if(isset($requestData['year'])){
+            if (!is_numeric($requestData['year']) || intval($requestData['year']) < 0 || intval($requestData['year'] > 32767)){
+                return $this->json([
+                    'error'=>true,
+                    'message'=> "L'année n'est pas valide."
+                ],400);
+            }
+            $year = $requestData['year'];
+        }
+        
+        // handle albums
+        $result = $this->repository->findAlbums();
+        $serializedData = [];
+        if($result){
+            foreach($result as $album){
+                if ($year != -1 && $album->getYear() != $year){
+                    continue;
+                }
+
+                if (isset($requestData['nom']) && $album->getNom() != $requestData['nom']){
+                    continue;
+                }
+
+                if (isset($requestData['fullname']) && $album->getArtistUserIdUser()->getFullname() != $requestData['fullname']){
+                    continue;
+                }
+
+                if (isset($requestData['labe']) && $album->getLabel() != $requestData['labe']){
+                    continue;
+                }
+
+                if ($categ != "" && $album->getCateg() != $categ){
+                    continue;
+                }
+                $fullname = $album->getArtistUserIdUser()->getFullname();
+                if ($featuringList != null && !in_array($fullname, $featuringList )){
+                    continue;
+                }
+
+                $albumData = $album->serializer();
+                $songsData = [];
+                foreach($album->getSongIdSong() as $song){
+                    $songsData[] = $song->serializer();
+                }
+                $albumData['songs']= $songsData;
+                
+                $artistData = [
+                    'firstname' => $album->getArtistUserIdUser()->getUserIdUser()->getFirstname(),
+                    'lastname' => $album->getArtistUserIdUser()->getUserIdUser()->getLastname(),
+                    'sexe' => ($album->getArtistUserIdUser()->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
+                    'dateBirth' => $album->getArtistUserIdUser()->getUserIdUser()->getDateBirth()->format('d-m-Y'),
+                    'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d'),
+                ];
+                $albumData['artist']= $artistData;
+                
+                $serializedData[] = $albumData;
+            }
+        };
+
+        $currentPage = 1;
+        $itemsPerPage = 5;
+        //dd($requestData['currentPage']);
+        if(isset($requestData['currentPage'])){
+            if( is_numeric($requestData['currentPage']) && intval($requestData['currentPage']) > 0){
+                $currentPage = $requestData['currentPage'];
+                $itemsPerPage = 5;
+            }else{
+                return $this->json([
+                    'error'=>true,
+                    'message'=>"Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide."          
+                ],400);
+            }
+        }
+
+        if (isset($requestData['limit'])){
+            if (is_numeric($requestData['limit']) && intval($requestData['limit']) > 0){
+                $itemsPerPage = $requestData['limit'];
+            }
+            else{
+                return $this->json([
+                    'error'=>true,
+                    'message'=>"Le paramètre de pagination est invalide. Veuillez fournir un numéro de page valide."          
+                ],400);
+            }
+        }
+        $totalPages = ceil(count($serializedData) / $itemsPerPage);
+
+        if ($currentPage > $totalPages) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Aucun album trouvé pour la page demandée.'
+            ], 404);
+        }
+
+        $startIndex = ($currentPage - 1) * $itemsPerPage;
+        $dataForCurrentPage = array_slice($serializedData, $startIndex, $itemsPerPage);
+
+        $pagination = [
+        'currentPage' => (int)($currentPage),
+        'totalPage' => $totalPages,
+        'totalAlbums' => count($serializedData)
         ];
 
         return $this->json([
