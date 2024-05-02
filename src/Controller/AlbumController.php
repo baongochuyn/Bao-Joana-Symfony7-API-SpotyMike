@@ -62,9 +62,30 @@ class AlbumController extends AbstractController
                 }
                 $albumData['songs']= $songsData;
                 
+                $email =  $album->getArtistUserIdUser()->getUserIdUser()->getEmail();
+                $chemin = $this->getParameter('upload_directory') . '/' . $email;
+                $path = null;
+                $avatar = null;
+                if (file_exists($chemin.'/avatar.png')){
+                    $path = $chemin.'/avatar.png';
+                }
+                if (file_exists($chemin.'/avatar.jpeg')){
+                    $path = $chemin.'/avatar.jpeg';
+                }
+        
+                if($path != null) {
+                    $type = pathinfo($path, PATHINFO_EXTENSION);
+                    $data = file_get_contents($path);  
+                    $avatar = 'data:image/' . $type . ';base64,' . base64_encode($data);
+                }
+    
                 $artistData = [
                     'firstname' => $album->getArtistUserIdUser()->getUserIdUser()->getFirstname(),
                     'lastname' => $album->getArtistUserIdUser()->getUserIdUser()->getLastname(),
+                    'fullname' => $album->getArtistUserIdUser()->getFullname(),
+                    'avatar' => $avatar,
+                    'follower' =>  $album->getArtistUserIdUser()->getFollower(),
+                    'cover'=> "",
                     'sexe' => ($album->getArtistUserIdUser()->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
                     'dateBirth' => $album->getArtistUserIdUser()->getUserIdUser()->getDateBirth()->format('d-m-Y'),
                     'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d H:i:s'),
@@ -103,9 +124,30 @@ class AlbumController extends AbstractController
                 }
                 $albumData['songs']= $songsData;
                 
+                $email =  $album->getArtistUserIdUser()->getUserIdUser()->getEmail();
+                $chemin = $this->getParameter('upload_directory') . '/' . $email;
+                $path = null;
+                $avatar = null;
+                if (file_exists($chemin.'/avatar.png')){
+                    $path = $chemin.'/avatar.png';
+                }
+                if (file_exists($chemin.'/avatar.jpeg')){
+                    $path = $chemin.'/avatar.jpeg';
+                }
+        
+                if($path != null) {
+                    $type = pathinfo($path, PATHINFO_EXTENSION);
+                    $data = file_get_contents($path);  
+                    $avatar = 'data:image/' . $type . ';base64,' . base64_encode($data);
+                }
+                
                 $artistData = [
                     'firstname' => $album->getArtistUserIdUser()->getUserIdUser()->getFirstname(),
                     'lastname' => $album->getArtistUserIdUser()->getUserIdUser()->getLastname(),
+                    'fullname' => $album->getArtistUserIdUser()->getFullname(),
+                    'avatar' => $avatar,
+                    'follower' =>  $album->getArtistUserIdUser()->getFollower(),
+                    'cover'=> "",
                     'sexe' => ($album->getArtistUserIdUser()->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
                     'dateBirth' => $album->getArtistUserIdUser()->getUserIdUser()->getDateBirth()->format('d-m-Y'),
                     'createdAt' => $album->getArtistUserIdUser()->getCreateAt()->format('Y-m-d H:i:s'),

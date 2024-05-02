@@ -41,6 +41,9 @@ class Artist
     #[ORM\Column(nullable: true)]
     private ?bool $active = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $follower = null;
+
     #[ORM\ManyToMany(targetEntity: Song::class, mappedBy: 'Artist_idUser')]
     private Collection $songs;
 
@@ -154,6 +157,18 @@ class Artist
         return $this;
     }
     
+    public function getFollower(): ?int
+    {
+        return $this->follower;
+    }
+
+    public function setYear(int $follower): static
+    {
+        $this->follower = $follower;
+
+        return $this;
+    }
+
     /**
      * @return Collection<int, Song>
      */
