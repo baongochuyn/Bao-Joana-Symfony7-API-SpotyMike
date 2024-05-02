@@ -501,6 +501,7 @@ class ArtistController extends AbstractController
             'lastname' => $artist->getUserIdUser()->getLastname(),
             'fullname' => $artist->getFullname(),
             'avatar' => $avatar,
+            'follower' => $artist->getFollower(),
             'sexe' => ($artist->getUserIdUser()->getSexe() == 0) ? "Femme" : "Homme",
             'dateBirth' => $artist->getUserIdUser()->getDateBirth()->format('d-m-Y'),
             'createdAt' => $artist->getCreateAt()->format('Y-m-d'),
